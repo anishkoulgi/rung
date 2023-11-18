@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Game
       Lib
   other-modules:
       Paths_court_piece
@@ -34,7 +35,12 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , bytestring
+    , mtl
+    , random
+    , split
   default-language: Haskell2010
 
 executable court-piece-exe
@@ -47,8 +53,13 @@ executable court-piece-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , bytestring
     , court-piece
+    , mtl
+    , random
+    , split
   default-language: Haskell2010
 
 test-suite court-piece-test
@@ -62,6 +73,11 @@ test-suite court-piece-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , bytestring
     , court-piece
+    , mtl
+    , random
+    , split
   default-language: Haskell2010
