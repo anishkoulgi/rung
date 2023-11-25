@@ -27,6 +27,7 @@ library
   exposed-modules:
       Game
       Lib
+      Server
   other-modules:
       Paths_court_piece
   autogen-modules:
@@ -39,8 +40,11 @@ library
     , base >=4.7 && <5
     , bytestring
     , mtl
+    , network
     , random
     , split
+    , text
+    , websockets
   default-language: Haskell2010
 
 executable court-piece-exe
@@ -58,8 +62,11 @@ executable court-piece-exe
     , bytestring
     , court-piece
     , mtl
+    , network
     , random
     , split
+    , text
+    , websockets
   default-language: Haskell2010
 
 test-suite court-piece-test
@@ -78,6 +85,9 @@ test-suite court-piece-test
     , bytestring
     , court-piece
     , mtl
+    , network
     , random
     , split
+    , text
+    , websockets
   default-language: Haskell2010

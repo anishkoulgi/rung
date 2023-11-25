@@ -26,6 +26,9 @@ dependencies:
 - random
 - split
 - mtl
+- websockets
+- text
+- network
 
 ghc-options:
 - -Wall
