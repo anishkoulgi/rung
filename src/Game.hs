@@ -83,13 +83,14 @@ assignCardPs _ = state (\x -> (False,x))
 -- Given number of cards to assign each player and list of cards and players,
 -- Assign each player the card and returns the updated players
 assignCardPl :: Int -> ([Card],[Player]) -> (Bool,([Card],[Player]))
-assignCardPl _ (cs,[]) = (True,(cs,[]))
-assignCardPl n (cs,p:ps) = if n >= length cs then (False,(cs,p:ps)) else (flg,(cc,pp)) where
-            newp = Player (name p) (take n cs)
-            (flg,(c,plyrs)) = assignCardPl n (drop n cs,ps)
-            cc = if flg then c else cs
-            pp = if flg then pls else p:ps
-            pls = newp:plyrs
+assignCardPl _ (remCards,[]) = (True,(remCards,[]))
+assignCardPl numCards currentState@(remCards,p:ps)
+  | numCards >= length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
+  | otherwise = (flg,(finalRemCards,finalPlayers)) where
+            newp = Player (name p) (take numCards remCards)                                     -- New player with cards assigned 
+            (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players
+            finalRemCards = if flg then updatedRemCards else remCards
+            finalPlayers = if flg then newp:plyrs else p:ps                                            
 
 
 
@@ -118,12 +119,13 @@ choseCard crd = state (choseCardGs crd)
 
 -- Get valid suits which can be played
 getValidSuits :: Gamestate -> [Suit]
-getValidSuits (Gamestate _ _ _ [] _ _) = [Spades .. Diamonds]
-getValidSuits (Gamestate _ _ _ (c:_) _ _) = [suit c]
+getValidSuits g = case currentRound g of
+  [] -> [Spades .. Diamonds]
+  (c:_) -> [suit c]
 
 -- Check if the current player has no card matching the suit of the game
 checkNoCardPossible :: Gamestate -> Bool
-checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) (cards (turn gs))
+checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) (cards (turn gs)) -- get the cards of the current player whose "turn" it is and check if they have atleast 1 card in this suit
 
 -- Helper function to replace first occurence of old val with new one in a list
 replaceVal :: Eq a => a -> a -> [a] -> [a]
@@ -146,10 +148,11 @@ choseCardGs crd gs@(Gamestate remC rnd pls cr tm trmp) = if isChosenCardValid cr
 
 -- Check to see if the game is finished
 isFinished :: Gamestate -> Bool
-isFinished (Gamestate _ 4 _ _ _ _) =True
-isFinished (Gamestate _ _ _ _ (Team _ 7 _,_) _) = True
-isFinished (Gamestate _ _ _ _ (_, Team _ 7 _) _) = True
-isFinished _ = False
+isFinished (Gamestate _ rnd _ _ tm _) = fn rnd tm where
+  fn 4 _ = True               -- Last round
+  fn _ (Team _ 7 _,_) = True  -- Team 1 has 7 points
+  fn _ (_, Team _ 7 _) = True -- Team 2 has 7 points
+  fn _ _ = False              -- Otherwise game hasn't finished
 
 
 -- Convert card to number based on trump and current suit of the game
@@ -182,14 +185,14 @@ reorderPL winPl pls = winPl : (b ++ a) where
 
 -- See if the current game is complete and update the gamestate based on that
 checkHandleWin :: Gamestate -> Gamestate
-checkHandleWin (Gamestate remC rnd o cr@[_,_,_,_] tm trmp) = ns where
-               ns = Gamestate remC rnd oo [] (updateWinningPl winningPl ta,updateWinningPl winningPl tb) trmp
+checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
+               ns = Gamestate remC rnd pOrderUpdated [] (updateWinningPl winningPl ta,updateWinningPl winningPl tb) trmp
                (ta,tb) = tm
                winningCrd = winningCard trmp cr
-               oo = reorderPL winningPl o
+               pOrderUpdated = reorderPL winningPl pOrder
                winningPl = case elemIndex winningCrd cr of
-                                Just x -> o!!x
-                                Nothing -> head o
+                                Just x -> pOrder!!x
+                                Nothing -> head pOrder
 
 checkHandleWin gg = gg
 
@@ -211,7 +214,7 @@ runGame :: Gamestate -> IO ()
 runGame gs = let vals = cardAssign gs in do {
     print vals;
     print ("Round Number: " ++ show ( round vals));
-    print (showPts(teams vals) );
+    print (showPts (teams vals) );
     print (currentRound vals);
     putStrLn ("Chose card player " ++ name (turn vals));
     print (cards (turn vals));
