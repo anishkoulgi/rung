@@ -8,6 +8,8 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
 import Control.Exception (finally)
+import Client ( app )
+import Network.Socket ( withSocketsDo )
 
 type Client = (String, WS.Connection)
 type ServerState = [Client]
@@ -34,7 +36,10 @@ broadcastMessage msg state = do
 runServer :: IO ()
 runServer = do
     state <- newMVar newServer
-    WS.runServer "0.0.0.0" 8080 $ application state
+    putStrLn "Hello world"
+    inp <- getLine
+    if inp == "client" then (withSocketsDo $ WS.runClient "localhost" 3333 "/" app) else (WS.runServer "localhost" 3333 $ application state)
+    
 
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do
