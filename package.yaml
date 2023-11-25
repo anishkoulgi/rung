@@ -26,6 +26,7 @@ dependencies:
 - random
 - split
 - mtl
+- brick == 1.9
 
 ghc-options:
 - -Wall
