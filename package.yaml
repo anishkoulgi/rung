@@ -27,6 +27,7 @@ dependencies:
 - split
 - mtl
 - brick == 1.9
+- vty
 
 ghc-options:
 - -Wall

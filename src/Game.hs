@@ -10,7 +10,13 @@ import Data.List
 import Data.List.Split
 import Prelude hiding (round)
 
-data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Show,Enum,Read)
+data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Enum,Read)
+instance Show Suit where
+  show Spades   = [toEnum 0x2660] :: String
+  show Hearts   = [toEnum 0x2665] :: String
+  show Diamonds = [toEnum 0x2666] :: String 
+  show Clubs    = [toEnum 0x2663] :: String
+  
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Joker | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
 data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
 
