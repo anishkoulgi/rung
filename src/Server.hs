@@ -1,15 +1,15 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Server where
-import Data.Text (Text)
 import Control.Monad (forM_, forever)
-import qualified Network.WebSockets as WS
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
 import Control.Exception (finally)
-import Client ( app )
+import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
+import Data.Text (Text)
+import qualified Data.Text.IO as T
+import System.Environment (getArgs)
 import Network.Socket ( withSocketsDo )
+import qualified Network.WebSockets as WS
+import Client ( app )
 
 type Client = (String, WS.Connection)
 type ServerState = [Client]
@@ -35,25 +35,23 @@ broadcastMessage msg state = do
 
 runServer :: IO ()
 runServer = do
+    putStrLn "Starting application..."
     state <- newMVar newServer
-    putStrLn "Hello world"
-    inp <- getLine
-    if inp == "client" then (withSocketsDo $ WS.runClient "localhost" 3333 "/" app) else (WS.runServer "localhost" 3333 $ application state)
-    
+    args  <- getArgs
+    let isClient = "client" `elem` args
+    if isClient 
+        then withSocketsDo $ WS.runClient "localhost" 3333 "/" app 
+        else WS.runServer "localhost" 3333 $ application state
+
 
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do
-    putStrLn "Listening for clients..."
     conn <- WS.acceptRequest pending
     WS.withPingThread conn 30 (return ()) $ do
-        msg <- WS.receiveData conn
         let client = ("New Client", conn)
         modifyMVar_ state $ \s -> do
-         let clientList = addNewClient client s
-         return clientList
-        cli <- readMVar state
-        print (map fst cli)
-        readMVar state >>= broadcastMessage msg
+            let clientList = addNewClient client s
+            return clientList
         finally (talk client state) (disconnect client)
         where
             disconnect client = do
