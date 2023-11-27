@@ -29,6 +29,7 @@ library
       Game
       Lib
       Server
+      Utils
   other-modules:
       Paths_court_piece
   autogen-modules:
@@ -40,11 +41,13 @@ library
       array
     , base >=4.7 && <5
     , bytestring
+    , case-insensitive
     , mtl
     , network
     , random
     , split
     , text
+    , utf8-string
     , websockets
   default-language: Haskell2010
 
@@ -61,12 +64,14 @@ executable court-piece-exe
       array
     , base >=4.7 && <5
     , bytestring
+    , case-insensitive
     , court-piece
     , mtl
     , network
     , random
     , split
     , text
+    , utf8-string
     , websockets
   default-language: Haskell2010
 
@@ -84,11 +89,13 @@ test-suite court-piece-test
       array
     , base >=4.7 && <5
     , bytestring
+    , case-insensitive
     , court-piece
     , mtl
     , network
     , random
     , split
     , text
+    , utf8-string
     , websockets
   default-language: Haskell2010

@@ -1,4 +1,3 @@
-{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Server where
 import Control.Monad (forM_, forever)
@@ -6,10 +5,8 @@ import Control.Exception (finally)
 import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
 import Data.Text (Text)
 import qualified Data.Text.IO as T
-import System.Environment (getArgs)
-import Network.Socket ( withSocketsDo )
 import qualified Network.WebSockets as WS
-import Client ( app )
+import Utils (parseHeaders, getCodeFromHeaders, host, port)
 
 type Client = (String, WS.Connection)
 type ServerState = [Client]
@@ -35,17 +32,15 @@ broadcastMessage msg state = do
 
 runServer :: IO ()
 runServer = do
-    putStrLn "Starting application..."
     state <- newMVar newServer
-    args  <- getArgs
-    let isClient = "client" `elem` args
-    if isClient 
-        then withSocketsDo $ WS.runClient "localhost" 3333 "/" app 
-        else WS.runServer "localhost" 3333 $ application state
-
+    WS.runServer host port $ application state
 
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do
+    let request = WS.pendingRequest pending
+    let headers = parseHeaders (WS.requestHeaders request)
+    let code    = getCodeFromHeaders headers 
+    putStrLn $ "Received a connection with code: " ++ show code
     conn <- WS.acceptRequest pending
     WS.withPingThread conn 30 (return ()) $ do
         let client = ("New Client", conn)

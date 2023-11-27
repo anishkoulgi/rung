@@ -29,6 +29,8 @@ dependencies:
 - websockets
 - text
 - network
+- utf8-string
+- case-insensitive
 
 ghc-options:
 - -Wall
