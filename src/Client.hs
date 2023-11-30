@@ -43,5 +43,6 @@ runClient = do
     let headers = makeCodeHeader code
     withSocketsDo $ WS.runClientWith host port "/" WS.defaultConnectionOptions headers application 
 
+-- | Creates the game code header for the WS request
 makeCodeHeader :: String -> Headers
 makeCodeHeader code = [("code", BLU.pack code)]

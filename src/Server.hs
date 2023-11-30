@@ -17,27 +17,6 @@ data ServerState = ServerState { clients :: [Client], games :: Map String [Clien
 newServer :: ServerState
 newServer = ServerState [] empty
 
-doesClientExist :: Client -> ServerState -> Bool
-doesClientExist client (ServerState cls _) = any ((== fst client) . fst) cls
-
-addNewClient :: Client -> ServerState -> ServerState
-addNewClient client state@(ServerState { clients = cls }) = if not (doesClientExist client state)
-                            then state { clients = client : cls }
-                            else state
-
-removeClient :: Client -> String -> ServerState -> ServerState
-removeClient client code state@(ServerState { clients = cls }) = state { clients = filteredClients, games = newGameMap }
-    where
-        filteredClients = filter ((/= fst client) . fst) cls
-        newGameMap = if member code (games state)
-                        then deleteFromGameMap code client (games state)
-                        else empty
-
-broadcastMessage :: Text -> ServerState -> IO()
-broadcastMessage msg (ServerState { clients = cls }) = do
-    T.putStrLn msg
-    forM_ cls $ \(_, conn) -> WS.sendTextData conn msg
-
 runServer :: IO ()
 runServer = do
     state <- newMVar newServer
@@ -59,7 +38,7 @@ application state pending = do
 acceptConnection :: MVar ServerState -> WS.PendingConnection -> String ->  IO ()
 acceptConnection state pending code = do
     conn <- WS.acceptRequest pending
-    let client = ("New Client", conn)
+    let client = ("New Client", conn) -- TODO: Change this to a random name or accept name from client
     addClientToState client code state
     WS.withPingThread conn 30 (return ()) $ do
         finally (talk client state) (disconnect client)
@@ -73,13 +52,20 @@ talk (_, conn) state = forever $ do
     msg <- WS.receiveData conn
     readMVar state >>= broadcastMessage msg
 
+broadcastMessage :: Text -> ServerState -> IO()
+broadcastMessage msg (ServerState { clients = cls }) = do
+    T.putStrLn msg
+    forM_ cls $ \(_, conn) -> WS.sendTextData conn msg -- TODO: Send message to only the clients in the same game
+
 checkCodeValidity :: String -> MVar ServerState -> IO Bool
 checkCodeValidity code state = do
     s <- readMVar state
     let gameMap = games s
     return (member code gameMap )
 
+-- ----------------------------------------------------------------------------------------------
 -- Helper Functions for modifying ServerState
+-- ----------------------------------------------------------------------------------------------
 
 addClientToState :: Client -> String -> MVar ServerState -> IO ()
 addClientToState client code state = do
@@ -107,3 +93,19 @@ addNewGame :: String -> Client -> Map String [Client] -> Map String [Client]
 addNewGame code client gameMap = do
     let newGameMap = insert code [client] gameMap
     newGameMap
+
+doesClientExist :: Client -> ServerState -> Bool
+doesClientExist client (ServerState cls _) = any ((== fst client) . fst) cls
+
+addNewClient :: Client -> ServerState -> ServerState
+addNewClient client state@(ServerState { clients = cls }) = if not (doesClientExist client state)
+                            then state { clients = client : cls }
+                            else state
+
+removeClient :: Client -> String -> ServerState -> ServerState
+removeClient client code state@(ServerState { clients = cls }) = state { clients = filteredClients, games = newGameMap }
+    where
+        filteredClients = filter ((/= fst client) . fst) cls
+        newGameMap = if member code (games state)
+                        then deleteFromGameMap code client (games state)
+                        else empty

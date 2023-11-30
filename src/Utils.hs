@@ -16,7 +16,8 @@ parseHeaders = map (\(key, val) -> (BLU.unpack (original key), BLU.unpack val))
 
 -- | Get the code from the parsed headers
 getCodeFromHeaders :: [(String, String)] -> String
-getCodeFromHeaders headers = Data.Maybe.fromMaybe "" (lookup "code" headers) -- fromMaybe returns the default value if the maybe value is Nothing
+-- fromMaybe returns the default value if the maybe value is Nothing
+getCodeFromHeaders headers = Data.Maybe.fromMaybe "" (lookup "code" headers) 
 
 -- Generate a random UUID code for the game
 generateRandomCode :: IO String
