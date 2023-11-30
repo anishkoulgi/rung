@@ -27,6 +27,8 @@ library
   exposed-modules:
       Game
       Lib
+      UI.GameMode
+      UI.InitialClientPage
   other-modules:
       Paths_court_piece
   autogen-modules:
@@ -37,10 +39,16 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , random
     , split
+    , text
+    , vty
   default-language: Haskell2010
 
 executable court-piece-exe
@@ -55,11 +63,17 @@ executable court-piece-exe
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
     , court-piece
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , random
     , split
+    , text
+    , vty
   default-language: Haskell2010
 
 test-suite court-piece-test
@@ -75,9 +89,15 @@ test-suite court-piece-test
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
     , court-piece
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , random
     , split
+    , text
+    , vty
   default-language: Haskell2010

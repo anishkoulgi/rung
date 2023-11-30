@@ -28,6 +28,11 @@ dependencies:
 - mtl
 - brick == 1.9
 - vty
+- microlens
+- mtl
+- microlens-mtl
+- microlens-th
+- text
 
 ghc-options:
 - -Wall
