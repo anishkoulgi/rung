@@ -15,7 +15,7 @@ import qualified Data.Text.IO        as T
 import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
-import Utils (host, port)
+import Constants (host, port)
 
 
 --------------------------------------------------------------------------------
