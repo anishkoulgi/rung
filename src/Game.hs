@@ -14,12 +14,10 @@ data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Show,Enum,Read)
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Joker | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
 data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
 
-
 class Named a where
     name :: a -> String
 
-
-data Player = Player {_nameP::String, cards::[Card]} deriving (Eq,Show,Read)
+data Player = Player {_nameP::String, _id::String, cards::[Card]} deriving (Eq,Show,Read)
 data Team = Team {_nameT::String, points::Int, players::(String,String)} deriving (Eq,Show,Read)
 
 instance Named Player where
@@ -32,6 +30,7 @@ instance Named Team where
 
 data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read)
 
+data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
 
 -- | Randomly shuffle a list
 --   /O(N)/
@@ -83,30 +82,34 @@ assignCardPs _ = state (\x -> (False,x))
 -- Given number of cards to assign each player and list of cards and players,
 -- Assign each player the card and returns the updated players
 assignCardPl :: Int -> ([Card],[Player]) -> (Bool,([Card],[Player]))
-assignCardPl _ (cs,[]) = (True,(cs,[]))
-assignCardPl n (cs,p:ps) = if n >= length cs then (False,(cs,p:ps)) else (flg,(cc,pp)) where
-            newp = Player (name p) (take n cs)
-            (flg,(c,plyrs)) = assignCardPl n (drop n cs,ps)
-            cc = if flg then c else cs
-            pp = if flg then pls else p:ps
-            pls = newp:plyrs
+assignCardPl _ (remCards,[]) = (True,(remCards,[]))
+assignCardPl numCards currentState@(remCards,p:ps)
+  | numCards >= length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
+  | otherwise = (flg,(finalRemCards,finalPlayers)) where
+            newp = Player (name p) (_id p) (take numCards remCards)                                     -- New player with cards assigned 
+            (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players
+            finalRemCards = if flg then updatedRemCards else remCards
+            finalPlayers = if flg then newp:plyrs else p:ps                                            
 
 
 
 initialDeck :: [Card]
 initialDeck = [Card st val | st <- [Spades .. Diamonds],val <- [Two .. Ace]]
 nipun :: Player
-nipun = Player "Nipun" []
+nipun = Player "Nipun" "1" []
 anish :: Player
-anish = Player "Anish" []
+anish = Player "Anish" "2" []
 mahesh :: Player
-mahesh = Player "Mahesh" []
+mahesh = Player "Mahesh" "3" []
 suresh :: Player
-suresh = Player "Suresh" []
+suresh = Player "Suresh" "4" []
 
 allPlayers :: [Player]
 allPlayers = [nipun,anish,mahesh,suresh]
 
+-- PlayerState to send to the client of player for displaying on UI
+getPlayerState :: Gamestate -> Player -> PlayerState
+getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs)
 
 -- Based on gamestate, return the player whose turn it is to play
 turn :: Gamestate -> Player
@@ -118,12 +121,13 @@ choseCard crd = state (choseCardGs crd)
 
 -- Get valid suits which can be played
 getValidSuits :: Gamestate -> [Suit]
-getValidSuits (Gamestate _ _ _ [] _ _) = [Spades .. Diamonds]
-getValidSuits (Gamestate _ _ _ (c:_) _ _) = [suit c]
+getValidSuits g = case currentRound g of
+  [] -> [Spades .. Diamonds]
+  (c:_) -> [suit c]
 
 -- Check if the current player has no card matching the suit of the game
 checkNoCardPossible :: Gamestate -> Bool
-checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) (cards (turn gs))
+checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) (cards (turn gs)) -- get the cards of the current player whose "turn" it is and check if they have atleast 1 card in this suit
 
 -- Helper function to replace first occurence of old val with new one in a list
 replaceVal :: Eq a => a -> a -> [a] -> [a]
@@ -142,14 +146,15 @@ choseCardGs crd gs@(Gamestate remC rnd pls cr tm trmp) = if isChosenCardValid cr
                                 then (True,Gamestate remC rnd (replaceVal oldP newP pls) (cr ++ [crd]) tm trmp)
                                 else (False,gs) where
                                  oldP = turn gs
-                                 newP = Player (name oldP) (delete crd (cards oldP))
+                                 newP = Player (name oldP) (_id oldP) (delete crd (cards oldP))
 
 -- Check to see if the game is finished
 isFinished :: Gamestate -> Bool
-isFinished (Gamestate _ 4 _ _ _ _) =True
-isFinished (Gamestate _ _ _ _ (Team _ 7 _,_) _) = True
-isFinished (Gamestate _ _ _ _ (_, Team _ 7 _) _) = True
-isFinished _ = False
+isFinished (Gamestate _ rnd _ _ tm _) = fn rnd tm where
+  fn 4 _ = True               -- Last round
+  fn _ (Team _ 7 _,_) = True  -- Team 1 has 7 points
+  fn _ (_, Team _ 7 _) = True -- Team 2 has 7 points
+  fn _ _ = False              -- Otherwise game hasn't finished
 
 
 -- Convert card to number based on trump and current suit of the game
@@ -182,14 +187,14 @@ reorderPL winPl pls = winPl : (b ++ a) where
 
 -- See if the current game is complete and update the gamestate based on that
 checkHandleWin :: Gamestate -> Gamestate
-checkHandleWin (Gamestate remC rnd o cr@[_,_,_,_] tm trmp) = ns where
-               ns = Gamestate remC rnd oo [] (updateWinningPl winningPl ta,updateWinningPl winningPl tb) trmp
+checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
+               ns = Gamestate remC rnd pOrderUpdated [] (updateWinningPl winningPl ta,updateWinningPl winningPl tb) trmp
                (ta,tb) = tm
                winningCrd = winningCard trmp cr
-               oo = reorderPL winningPl o
+               pOrderUpdated = reorderPL winningPl pOrder
                winningPl = case elemIndex winningCrd cr of
-                                Just x -> o!!x
-                                Nothing -> head o
+                                Just x -> pOrder!!x
+                                Nothing -> head pOrder
 
 checkHandleWin gg = gg
 
@@ -211,23 +216,13 @@ runGame :: Gamestate -> IO ()
 runGame gs = let vals = cardAssign gs in do {
     print vals;
     print ("Round Number: " ++ show ( round vals));
-    print (showPts(teams vals) );
+    print (showPts (teams vals) );
     print (currentRound vals);
     putStrLn ("Chose card player " ++ name (turn vals));
     print (cards (turn vals));
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
-
-beforeFinished :: Gamestate
-beforeFinished = Gamestate {remainingCards = [Card {suit = Clubs, value = Ace},Card {suit = Clubs, value = Seven},Card {suit = Diamonds, value = Six},Card {suit = Diamonds, value = Nine},Card {suit = Diamonds, value = Five},Card {suit = Spades, value = King},Card {suit = Clubs, value = Joker},Card {suit = Spades, value = Nine}], round = 3, playerOrder = [Player {_nameP = "Anish", cards = [Card {suit = Spades, value = Ten},Card {suit = Hearts, value = Ten}]},Player {_nameP = "Suresh", cards = [Card {suit = Clubs, value = Queen},Card {suit = Clubs, value = Five}]},Player {_nameP = "Nipun", cards = [Card {suit = Hearts, value = Joker},Card {suit = Clubs, value = Two}]},Player {_nameP = "Mahesh", cards = [Card {suit = Diamonds, value = Two},Card {suit = Hearts, value = Nine},Card {suit = Hearts, value = Six}]}], currentRound = [Card {suit = Spades, value = Queen},Card {suit = Spades, value = Four},Card {suit = Spades, value = Joker}], teams = (Team {_nameT = "one", points = 6, players = ("Nipun","Anish")},Team {_nameT = "two", points = 2, players = ("Mahesh","Suresh")}), trump = Spades}
-
-testFinished :: Gamestate
-testFinished = Gamestate {remainingCards = [Card {suit = Clubs, value = Ace},Card {suit = Clubs, value = Seven},Card {suit = Diamonds, value = Six},Card {suit = Diamonds, value = Nine},Card {suit = Diamonds, value = Five},Card {suit = Spades, value = King},Card {suit = Clubs, value = Joker},Card {suit = Spades, value = Nine}], round = 3, playerOrder = [Player {_nameP = "Anish", cards = [Card {suit = Spades, value = Ten},Card {suit = Hearts, value = Ten}]},Player {_nameP = "Suresh", cards = [Card {suit = Clubs, value = Queen},Card {suit = Clubs, value = Five}]},Player {_nameP = "Nipun", cards = [Card {suit = Hearts, value = Joker},Card {suit = Clubs, value = Two}]},Player {_nameP = "Mahesh", cards = [Card {suit = Diamonds, value = Two},Card {suit = Hearts, value = Six}]}], currentRound = [], teams = (Team {_nameT = "one", points = 7, players = ("Nipun","Anish")},Team {_nameT = "two", points = 2, players = ("Mahesh","Suresh")}), trump = Spades}
-
--- >>> isFinished beforeFinished
--- False
-
 
 
 
