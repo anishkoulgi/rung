@@ -38,11 +38,11 @@ application conn = do
 
 runClient :: IO ()
 runClient = do
-    putStrLn "Enter the game code (Press enter otherwise)"
-    code <- getLine
-    let headers = makeCodeHeader code
+    putStrLn "Enter your name:"
+    name <- getLine
+    let headers = makeNameHeader name 
     withSocketsDo $ WS.runClientWith host port "/" WS.defaultConnectionOptions headers application 
 
--- | Creates the game code header for the WS request
-makeCodeHeader :: String -> Headers
-makeCodeHeader code = [("code", BLU.pack code)]
+-- | Creates the game name header for the WS request
+makeNameHeader :: String -> Headers
+makeNameHeader name = [("name", BLU.pack name)]

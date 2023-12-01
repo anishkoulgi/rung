@@ -32,7 +32,6 @@ dependencies:
 - utf8-string
 - case-insensitive
 - containers
-- uuid
 
 ghc-options:
 - -Wall
