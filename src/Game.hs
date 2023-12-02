@@ -1,6 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-module Game where
+module Game (startGame) where
 import Data.Array.IO
 
 import System.Random
@@ -10,33 +10,14 @@ import Data.List
 import Data.List.Split
 import Prelude hiding (round)
 
-data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Enum,Read)
-instance Show Suit where
-  show Spades   = [toEnum 0x2660] :: String
-  show Hearts   = [toEnum 0x2665] :: String
-  show Diamonds = [toEnum 0x2666] :: String 
-  show Clubs    = [toEnum 0x2663] :: String
-  
-data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Joker | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
-data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
+import Lens.Micro
+import Lens.Micro.Mtl
+import Lens.Micro.TH
 
-class Named a where
-    name :: a -> String
+import UI.GameMode
+import Objects
+import Client
 
-data Player = Player {_nameP::String, _id::String, cards::[Card]} deriving (Eq,Show,Read)
-data Team = Team {_nameT::String, points::Int, players::(String,String)} deriving (Eq,Show,Read)
-
-instance Named Player where
-  name :: Player -> String
-  name = _nameP
-
-instance Named Team where
-  name :: Team -> String
-  name = _nameT
-
-data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read)
-
-data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
 
 -- | Randomly shuffle a list
 --   /O(N)/
@@ -92,10 +73,10 @@ assignCardPl _ (remCards,[]) = (True,(remCards,[]))
 assignCardPl numCards currentState@(remCards,p:ps)
   | numCards >= length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
   | otherwise = (flg,(finalRemCards,finalPlayers)) where
-            newp = Player (name p) (_id p) (take numCards remCards)                                     -- New player with cards assigned 
+            newp = Player (p^.nameP) (p^.idP) (take numCards remCards)                                     -- New player with cards assigned 
             (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players
             finalRemCards = if flg then updatedRemCards else remCards
-            finalPlayers = if flg then newp:plyrs else p:ps                                            
+            finalPlayers = if flg then newp:plyrs else p:ps
 
 
 
@@ -152,7 +133,7 @@ choseCardGs crd gs@(Gamestate remC rnd pls cr tm trmp) = if isChosenCardValid cr
                                 then (True,Gamestate remC rnd (replaceVal oldP newP pls) (cr ++ [crd]) tm trmp)
                                 else (False,gs) where
                                  oldP = turn gs
-                                 newP = Player (name oldP) (_id oldP) (delete crd (cards oldP))
+                                 newP = Player (oldP ^. nameP) (oldP^.idP) (delete crd (cards oldP))
 
 -- Check to see if the game is finished
 isFinished :: Gamestate -> Bool
@@ -178,7 +159,7 @@ winningCard st crds = head sortCrds where
 
 -- If the winning player is in the team, increment the points of the team
 updateWinningPl :: Player -> Team -> Team
-updateWinningPl pl t@(Team x pt (a,b)) = if name pl `elem` [a,b] then Team x (pt+1) (a,b) else t
+updateWinningPl pl t@(Team x pt (a,b)) = if pl^.nameP `elem` [a,b] then Team x (pt+1) (a,b) else t
 
 -- Reorder players based on the player who won the previous game
 reorderPL :: Player -> [Player] -> [Player]
@@ -215,7 +196,7 @@ team2 = Team "two" 0 ("Mahesh","Suresh")
 -- "Nipun"
 
 showPts :: (Team,Team) -> String
-showPts (a,b) = name a ++ " : " ++ show (points a) ++ " -- " ++ name b ++ " : " ++ show (points b)
+showPts (a,b) = a^.nameT ++ " : " ++ show (points a) ++ " -- " ++ b^.nameT ++ " : " ++ show (points b)
 
 -- Run the game on console where each player takes turn for manual testing
 runGame :: Gamestate -> IO ()
@@ -224,11 +205,19 @@ runGame gs = let vals = cardAssign gs in do {
     print ("Round Number: " ++ show ( round vals));
     print (showPts (teams vals) );
     print (currentRound vals);
-    putStrLn ("Chose card player " ++ name (turn vals));
+    putStrLn ("Chose card player " ++ (turn vals)^.nameP);
     print (cards (turn vals));
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
+
+startGame :: IO()
+startGame = do
+  choice <- selectionMain
+  case choice of
+    HostMode -> putStrLn "Invoke server"
+    ClientMode -> clientMain
+    
 
 
 

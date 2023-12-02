@@ -1,9 +1,8 @@
 module Main (main) where
 
-import Lib
-import UI.GameMode
+import Game (startGame)
 
 main :: IO ()
 main = do
-    mode <-  selectionMain
-    print ()
+    _ <- startGame
+    putStrLn ""

@@ -25,10 +25,11 @@ source-repository head
 
 library
   exposed-modules:
+      Client
       Game
-      Lib
+      Objects
+      UI.Client.InitialClientPage
       UI.GameMode
-      UI.InitialClientPage
   other-modules:
       Paths_court_piece
   autogen-modules:

@@ -17,18 +17,15 @@ import Lens.Micro.TH
 import System.Exit (exitFailure)
 
 
-import UI.InitialClientPage (getClientData)
-
-data Choice = HostMode | ClientMode
-            deriving Show
+import qualified Objects as O
 
 data Name = Host | Client
     deriving (Show, Eq, Ord)
 
-drawUI :: D.Dialog Choice Name -> [Widget Name]
+drawUI :: D.Dialog O.Choice Name -> [Widget Name]
 drawUI d = [D.renderDialog d $ C.hCenter $ padAll 1 $ str "Select the mode"]
 
-handleEvent :: BrickEvent Name e -> T.EventM Name (D.Dialog Choice Name) ()
+handleEvent :: BrickEvent Name e -> T.EventM Name (D.Dialog O.Choice Name) ()
 handleEvent (VtyEvent ev) =
     case ev of
         V.EvKey  V.KEnter     _ -> M.halt
@@ -37,11 +34,11 @@ handleEvent (VtyEvent ev) =
         _                       -> D.handleDialogEvent ev
 handleEvent _ = return ()
 
-initialState :: D.Dialog Choice Name
+initialState :: D.Dialog O.Choice Name
 initialState = D.dialog (Just $ str "Court Piece") (Just (Host, choices)) 50
     where
-        choices = [ ("Host a game",   Host,   HostMode)
-                  , ("Join a game",  Client,  ClientMode)
+        choices = [ ("Host a game",   Host,   O.HostMode)
+                  , ("Join a game",  Client,  O.ClientMode)
                   ]
 
 theMap :: A.AttrMap
@@ -51,7 +48,7 @@ theMap = A.attrMap V.defAttr
     , (D.buttonSelectedAttr, bg V.green)
     ]
 
-modeSelectionApp :: M.App (D.Dialog Choice Name) e Name
+modeSelectionApp :: M.App (D.Dialog O.Choice Name) e Name
 modeSelectionApp =
     M.App { M.appDraw = drawUI
           , M.appChooseCursor = M.neverShowCursor
@@ -60,10 +57,10 @@ modeSelectionApp =
           , M.appAttrMap = const theMap
           }
 
-selectionMain :: IO ()
+selectionMain :: IO (O.Choice)
 selectionMain = do
     d <- M.defaultMain modeSelectionApp initialState
-    case D.dialogSelection d of
-        Just (Client, ClientMode) -> getClientData
-        Just (_, _) -> putStrLn "Call Server"
-        Nothing -> putStrLn "Never called"
+    return (case D.dialogSelection d of
+        Just (Client, O.ClientMode) -> O.ClientMode
+        Just (_, _) -> O.HostMode
+        Nothing -> O.ClientMode)

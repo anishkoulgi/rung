@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module UI.InitialClientPage (getClientData) where
+module UI.Client.InitialClientPage (getClientData) where
 import Brick
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Center as C
@@ -32,25 +32,20 @@ import Lens.Micro.TH
 
 import System.Exit (exitFailure)
 
-data ClientInfo = 
-    ClientInfo {
-        _name :: T.Text,
-        _ip ::  T.Text
-    } deriving (Show)
-    
+import Objects
+
 data Name = NameField
           | IPAddressField
           deriving (Eq, Ord, Show)
 
-makeLenses ''ClientInfo
 
 
 mkForm :: ClientInfo -> Form ClientInfo e Name
 mkForm = let label s w = padBottom (Pad 1) $
                     (vLimit 1 $ hLimit 15 $ str s <+> fill ' ') <+> w
          in newForm [ label "Name" @@=  editTextField name NameField (Just 1)
-                 , (str "Server IP: " <+>) @@=editTextField ip IPAddressField (Just 1) -- TODO: Add validation for IP
-                 ]
+                    , label "Server IP: "  @@= editTextField ip IPAddressField (Just 1) -- TODO: Add validation for IP
+                    ]
 
 
 logo :: Widget Name
@@ -72,10 +67,10 @@ theMap = attrMap V.defAttr
 
 
 renderMyForm :: Form ClientInfo e Name -> [Widget Name]
-renderMyForm form = [(C.hCenter $ C.vCenter $ logo) <=> (C.hCenter $ C.vCenter $ B.border $ padTop (Pad 1) $ hLimit 50 $ renderForm form)]
+renderMyForm form = [(C.hCenter $ padTop (Pad 3) $ logo) <=> (C.hCenter $ C.vCenter $ B.border $ padAll 1 $ hLimit 50 $ renderForm form)]
 
-app :: App (Form ClientInfo e Name) e Name
-app =
+formApp :: App (Form ClientInfo e Name) e Name
+formApp =
     App { appDraw = renderMyForm
         , appHandleEvent = \ev -> do
             f <- gets formFocus
@@ -98,7 +93,7 @@ app =
         , appAttrMap = const theMap
         }
 
-getClientData :: IO ()
+getClientData :: IO (ClientInfo)
 getClientData = do
     let buildVty = do
           v <- V.mkVty V.defaultConfig
@@ -110,9 +105,8 @@ getClientData = do
                                    }
         f = mkForm initialUserInfo
     initialVty <- buildVty
-    f' <- customMain initialVty buildVty Nothing app f
+    f' <- customMain initialVty buildVty Nothing formApp f
 
-    putStrLn "The final form state was:"
-    print $ formState f'
+    return (formState f')
 
 
