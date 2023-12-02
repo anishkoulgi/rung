@@ -3,6 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module UI.Client.InitialClientPage (getClientData) where
+
+  
 import Brick
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Center as C
@@ -23,16 +25,12 @@ import Brick.Focus
   ( focusRingCursor
   )
 import Control.Monad.IO.Class  
-
 import qualified Data.Text as T
-
 import qualified Graphics.Vty as V
-
 import Lens.Micro.TH
-
+import Objects
 import System.Exit (exitFailure)
 
-import Objects
 
 data Name = NameField
           | IPAddressField

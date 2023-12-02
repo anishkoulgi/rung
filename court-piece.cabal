@@ -28,6 +28,7 @@ library
       Client
       Game
       Objects
+      UI.Client.ClientPage
       UI.Client.InitialClientPage
       UI.GameMode
   other-modules:

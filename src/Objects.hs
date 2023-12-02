@@ -33,8 +33,26 @@ instance Show Suit where
   show Diamonds = [toEnum 0x2666] :: String
   show Clubs    = [toEnum 0x2663] :: String
 
-data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Joker | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
-data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
+data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Joker | Queen | King | Ace deriving (Ord,Eq,Enum,Read)
+instance Show Value where
+    show Two = "2"
+    show Three = "3"
+    show Four = "4"
+    show Five = "5"
+    show Six = "6"
+    show Seven = "7"
+    show Eight = "8"
+    show Nine = "9"
+    show Ten = "10"
+    show Joker = "JK"
+    show Queen = "Q"
+    show King = "K"
+    show Jack = "J"
+    show Ace = "A"
+
+data Card = Card {suit:: Suit, value::Value} deriving (Eq,Read)
+instance Show Card where
+    show c = (show $ value c) ++ (show $ suit c)
 
 
 data Player = Player {_nameP::String, _idP::String, cards::[Card]} deriving (Eq,Show,Read)
