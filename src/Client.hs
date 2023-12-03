@@ -16,11 +16,14 @@ import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
 import Constants (host, port)
+import Text.Read (readEither)
+import Game (Card)
+import Utils (Message(Message))
 
 
 --------------------------------------------------------------------------------
-application :: WS.ClientApp ()
-application conn = do
+application :: String -> WS.ClientApp ()
+application name conn = do
     putStrLn "Connected!"
 
     -- Fork a thread that writes WS data to stdout
@@ -31,9 +34,13 @@ application conn = do
     -- Read from stdin and write to WS
     let loop = do
             line <- T.getLine
-            unless (T.null line) $ WS.sendTextData conn line >> loop
-
-    loop
+            case (readEither (T.unpack line) :: Either String Card) of
+                Left _ -> putStrLn "Invalid card format" >> loop
+                Right card -> do
+                    let message = Message name card 
+                    putStrLn $ "Sending message: " ++ show message
+                    WS.sendTextData conn (T.pack $ show message) >> loop
+    _ <- loop
     WS.sendClose conn ("Bye!" :: Text)
 
 runClient :: IO ()
@@ -41,7 +48,7 @@ runClient = do
     putStrLn "Enter your name:"
     name <- getLine
     let headers = makeNameHeader name 
-    withSocketsDo $ WS.runClientWith host port "/" WS.defaultConnectionOptions headers application 
+    withSocketsDo $ WS.runClientWith host port "/" WS.defaultConnectionOptions headers (application name)
 
 -- | Creates the game name header for the WS request
 makeNameHeader :: String -> Headers

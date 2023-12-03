@@ -1,10 +1,14 @@
 module Utils where
 import Data.CaseInsensitive (original)
-import Data.ByteString.Char8 as BLU hiding (map)
+import qualified Data.ByteString.Char8 as BLU 
 import qualified Data.Maybe
 import qualified Network.WebSockets as WS
 import qualified Game as G 
 import Game (initialDeck)
+import Data.Text (Text, unpack)
+import Text.Read (readEither)
+
+data Message = Message { player :: String, move :: G.Card } deriving (Show, Read)
 
 ---------------------------------------------------------------------------------------------------
 -- | Parse the headers from a WS request
@@ -22,5 +26,16 @@ getNameFromHeaders headers = Data.Maybe.fromMaybe "" (lookup "name" headers)
 getDefaultEmptyGamestate ::  G.Gamestate 
 getDefaultEmptyGamestate =  G.Gamestate [] 0 [] [] (G.Team "" 0 ("",""), G.Team "" 0 ("","")) G.Spades
 
-initializeGameState :: [G.Player] -> (G.Team, G.Team) -> G.Gamestate
-initializeGameState players teams = G.Gamestate initialDeck 0 players [] teams G.Spades
+initializeGameState :: [G.Player] -> (G.Team, G.Team) -> IO G.Gamestate
+initializeGameState players teams = do
+    deck <- G.shuffle initialDeck
+    return (G.Gamestate deck 0 players [] teams G.Spades)
+
+---------------------------------------------------------------------------------------------------
+-- Parse message functions
+---------------------------------------------------------------------------------------------------
+
+parseMessage :: Text -> Either String Message 
+parseMessage msg = case readEither $ unpack msg :: Either String Message of
+    Left  _       -> Left "Invalid message format"
+    Right message -> Right message
