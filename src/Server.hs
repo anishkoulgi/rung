@@ -3,20 +3,18 @@ module Server where
 import Control.Monad (forM_, forever, when)
 import Control.Exception (finally)
 import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
-import Data.Text (Text)
 import Data.ByteString.Char8 as BLU hiding (tail, head, splitAt, map, length, null, filter, putStrLn, any, empty)
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import qualified Network.WebSockets as WS
-import Game (Gamestate, Player (Player), Team (Team), shuffle, cardAssign, turn, Named (name), choseCardGs, checkHandleWin)
+import Game (Gamestate (playerOrder), Player (Player), Team (Team), shuffle, cardAssign, turn, Named (name), choseCardGs, checkHandleWin, PlayerState, getPlayerState, isFinished)
 import Utils (parseHeaders, getNameFromHeaders, getDefaultEmptyGamestate, initializeGameState, parseMessage, Message (Message))
 import Constants (host, port)
 
 type Client = (String, WS.Connection)
-data ServerState = ServerState { clients :: [Client], gameState :: Gamestate, isStarted :: Bool }
+data ServerState = ServerState { clients :: [Client], gameState :: Gamestate, isStarted :: Bool}
 
 newServer :: ServerState
-newServer = ServerState { clients = [], gameState = getDefaultEmptyGamestate, isStarted = False }
+newServer = ServerState { clients = [], gameState = getDefaultEmptyGamestate, isStarted = False}
 
 runServer :: IO ()
 runServer = do
@@ -30,7 +28,7 @@ application state pending = do
     let playerName    = getNameFromHeaders headers
     if  not $ null playerName    -- Check that playerName is non-empty 
         then do
-            acceptConnection state pending playerName 
+            acceptConnection state pending playerName
         else WS.rejectRequest pending (BLU.pack "No name specified")
 
 acceptConnection :: MVar ServerState -> WS.PendingConnection -> String -> IO ()
@@ -44,7 +42,7 @@ acceptConnection state pending playerName = do
         putStrLn "Starting game"
         initGame state
         readMVar state >>= (\s -> putStrLn "Turn: " >> print (show (turn $ gameState s)))
-        broadcastGameState state
+        broadcastMessage state
     WS.withPingThread conn 30 (return ()) $ do
         finally (talk client state) (disconnect client)
         where
@@ -56,19 +54,26 @@ talk :: Client -> MVar ServerState -> IO ()
 talk (_, conn) state = forever $ do
     msg <- WS.receiveData conn
     putStrLn $ "Received message: " ++ show msg
-    case parseMessage msg of
-        Left err -> WS.sendTextData conn (T.pack err)
-        Right message -> do
-            wasValidMove <- performMove message state
-            readMVar state >>= (\s -> putStrLn "Next Turn: " >> print (name (turn $ gameState s)))
-            if wasValidMove
-                then return ()
-                else WS.sendTextData conn (T.pack "Invalid move") 
+    s <- readMVar state
+    if isFinished (gameState s)
+        then WS.sendTextData conn (T.pack "Game is finished")
+        else if not (isStarted s)
+            then WS.sendTextData conn (T.pack "Game has not started yet")
+            else case parseMessage msg of
+            Left err -> WS.sendTextData conn (T.pack err)
+            Right message -> do
+                wasValidMove <- performMove message state
+                readMVar state >>= (\st -> putStrLn "Next Turn: " >> print (name (turn $ gameState st))) -- only for debugging, remove later
+                if wasValidMove
+                    then return ()
+                    else WS.sendTextData conn (T.pack "Invalid move")
 
-broadcastMessage :: Text -> ServerState -> IO()
-broadcastMessage msg (ServerState { clients = cls }) = do
-    T.putStrLn msg
-    forM_ cls $ \(_, conn) -> WS.sendTextData conn msg
+broadcastMessage :: MVar ServerState -> IO()
+broadcastMessage state = do
+    s <- readMVar state
+    let conns = clients s
+    let gs = gameState s
+    forM_ conns $ \(client, conn) -> WS.sendTextData conn (T.pack $ show $ getPlayerStateFromGamestate gs client)
 
 -- ----------------------------------------------------------------------------------------------
 -- Helper Functions for modifying ServerState
@@ -85,7 +90,7 @@ initGame state = do
     modifyMVar_ state $ \s -> do
         teams <- getTeamsFromClient $ clients s
         initialGamestate <- initializeGameState (getPlayersFromClient $ clients s) teams
-        let gamestate = cardAssign initialGamestate 
+        let gamestate = cardAssign initialGamestate
         return s { gameState = gamestate, isStarted = True }
 
 doesClientExist :: Client -> ServerState -> Bool
@@ -104,6 +109,11 @@ removeClient client state@(ServerState {clients = cls}) = state { clients = filt
 getPlayersFromClient :: [Client] -> [Player]
 getPlayersFromClient = map (\(playerName, _) -> Player playerName "" [])
 
+getPlayerStateFromGamestate :: Gamestate -> String -> PlayerState
+getPlayerStateFromGamestate gs playerName = getPlayerState gs player
+    where
+        player = head $ filter ((== playerName) . name) (playerOrder gs)
+
 getTeamsFromClient :: [Client] -> IO (Team, Team)
 getTeamsFromClient cls = do
     shuffledClients <- shuffle cls
@@ -116,11 +126,6 @@ checkIfAllClientsReady state = do
     let clientList = clients s
     return $ length clientList == 4
 
-broadcastGameState :: MVar ServerState -> IO ()
-broadcastGameState state = do
-    s <- readMVar state
-    broadcastMessage (T.pack $ show $ gameState s) s
-
 -- ----------------------------------------------------------------------------------------------
 -- Game Validation Functions
 -- ----------------------------------------------------------------------------------------------
@@ -128,21 +133,17 @@ broadcastGameState state = do
 performMove :: Message -> MVar ServerState -> IO Bool
 performMove (Message player card) state = do
     st <- readMVar state
-    if isStarted st
+    let gs = gameState st
+    if player == (name $ turn gs)
         then do
-            let gs = gameState st
-            if player == (name $ turn gs)
+            let (isValid, newGs) = choseCardGs card gs
+            putStrLn $ "chose card is valid: " ++ show isValid
+            if isValid
                 then do
-                    let vals = cardAssign gs
-                    let (isValid, newGs) = choseCardGs card vals
-                    putStrLn $ "chose card is valid: " ++ show isValid
-                    if isValid
-                        then do
-                            let upGs = checkHandleWin newGs
-                            modifyMVar_ state $ \s -> do
-                                return s { gameState = upGs }
-                            broadcastGameState state
-                            return True
-                        else return False
+                    let upGs = cardAssign $ checkHandleWin newGs
+                    modifyMVar_ state $ \s -> do
+                        return s { gameState = upGs }
+                    broadcastMessage state
+                    return True
                 else return False
         else return False
