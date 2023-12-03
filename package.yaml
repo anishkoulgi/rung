@@ -33,6 +33,12 @@ dependencies:
 - microlens-mtl
 - microlens-th
 - text
+- websockets
+- text
+- network
+- utf8-string
+- case-insensitive
+- containers
 
 ghc-options:
 - -Wall
