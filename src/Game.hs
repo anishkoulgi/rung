@@ -71,7 +71,7 @@ assignCardPs _ = state (\x -> (False,x))
 assignCardPl :: Int -> ([Card],[Player]) -> (Bool,([Card],[Player]))
 assignCardPl _ (remCards,[]) = (True,(remCards,[]))
 assignCardPl numCards currentState@(remCards,p:ps)
-  | numCards >= length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
+  | numCards > length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
   | otherwise = (flg,(finalRemCards,finalPlayers)) where
             newp = Player (p^.nameP) (p^.idP) (take numCards remCards)                                     -- New player with cards assigned 
             (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players

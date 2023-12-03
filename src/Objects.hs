@@ -33,7 +33,7 @@ instance Show Suit where
   show Diamonds = [toEnum 0x2666] :: String
   show Clubs    = [toEnum 0x2663] :: String
 
-data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Joker | Queen | King | Ace deriving (Ord,Eq,Enum,Read)
+data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace deriving (Ord,Eq,Enum,Read)
 instance Show Value where
     show Two = "2"
     show Three = "3"
@@ -44,7 +44,6 @@ instance Show Value where
     show Eight = "8"
     show Nine = "9"
     show Ten = "10"
-    show Joker = "JK"
     show Queen = "Q"
     show King = "K"
     show Jack = "J"
@@ -61,7 +60,7 @@ data Team = Team {_nameT::String, points::Int, players::(String,String)} derivin
 makeLenses ''Player
 makeLenses ''Team
 
-data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read)
+data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read, Eq)
 
 data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
 
