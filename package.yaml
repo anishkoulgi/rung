@@ -32,6 +32,10 @@ dependencies:
 - utf8-string
 - case-insensitive
 - containers
+- tasty
+- tasty-hunit
+- tasty-quickcheck
+- QuickCheck
 
 ghc-options:
 - -Wall

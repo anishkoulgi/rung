@@ -28,7 +28,7 @@ instance Named Team where
   name :: Team -> String
   name = _nameT
 
-data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read)
+data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read,Eq)
 
 data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
 
@@ -91,21 +91,8 @@ assignCardPl numCards currentState@(remCards,p:ps)
             finalRemCards = if flg then updatedRemCards else remCards
             finalPlayers = if flg then newp:plyrs else p:ps                                            
 
-
-
 initialDeck :: [Card]
 initialDeck = [Card st val | st <- [Spades .. Diamonds],val <- [Two .. Ace]]
-nipun :: Player
-nipun = Player "Nipun" "1" []
-anish :: Player
-anish = Player "Anish" "2" []
-mahesh :: Player
-mahesh = Player "Mahesh" "3" []
-suresh :: Player
-suresh = Player "Suresh" "4" []
-
-allPlayers :: [Player]
-allPlayers = [nipun,anish,mahesh,suresh]
 
 -- PlayerState to send to the client of player for displaying on UI
 getPlayerState :: Gamestate -> Player -> PlayerState
@@ -181,10 +168,6 @@ reorderPL winPl pls = winPl : (b ++ a) where
                 [x,y] -> (x,y)
                 _ -> ([],[])
 
--- >>> reorderPL nipun [mahesh,anish,nipun,suresh]
--- [Player {_nameP = "Nipun", cards = []},Player {_nameP = "Suresh", cards = []},Player {_nameP = "Mahesh", cards = []},Player {_nameP = "Anish", cards = []}]
-
-
 -- See if the current game is complete and update the gamestate based on that
 checkHandleWin :: Gamestate -> Gamestate
 checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
@@ -198,15 +181,6 @@ checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
 
 checkHandleWin gg = gg
 
-
--- Helpers for testing
-team1 :: Team
-team1 = Team "one" 0 ("Nipun","Anish")
-team2 :: Team
-team2 = Team "two" 0 ("Mahesh","Suresh")
-
--- >>> name (turn initialGameState)
--- "Nipun"
 
 showPts :: (Team,Team) -> String
 showPts (a,b) = name a ++ " : " ++ show (points a) ++ " -- " ++ name b ++ " : " ++ show (points b)
@@ -223,16 +197,3 @@ runGame gs = let vals = cardAssign gs in do {
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

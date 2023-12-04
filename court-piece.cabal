@@ -39,7 +39,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
@@ -48,6 +49,9 @@ library
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , websockets
@@ -63,7 +67,8 @@ executable court-piece-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
@@ -73,6 +78,9 @@ executable court-piece-exe
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , websockets
@@ -82,6 +90,7 @@ test-suite court-piece-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Common
       Paths_court_piece
   autogen-modules:
       Paths_court_piece
@@ -89,7 +98,8 @@ test-suite court-piece-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
@@ -99,6 +109,9 @@ test-suite court-piece-test
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , websockets
