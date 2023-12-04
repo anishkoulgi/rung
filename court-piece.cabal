@@ -30,6 +30,7 @@ library
       Game
       Objects
       Server
+      UI.Client.ClientPage
       UI.Client.InitialClientPage
       UI.GameMode
       Utils

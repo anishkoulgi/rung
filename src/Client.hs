@@ -15,15 +15,14 @@ import qualified Data.Text.IO        as T
 import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
-import Constants (host, port)
+import Constants (port)
 import Text.Read (readEither)
-import Game (Card)
 import Utils (Message(Message))
-import UI.Client.InitialClientPage
-import UI.Client.ClientPage
+import UI.Client.InitialClientPage(getClientData)
+import UI.Client.ClientPage(showClientUI)
 import Objects
 import Lens.Micro
-import Text.Printf
+import Data.Typeable
 
 
 --------------------------------------------------------------------------------
@@ -34,7 +33,12 @@ application name conn = do
     -- Fork a thread that writes WS data to stdout
     _ <- forkIO $ forever $ do
         msg <- WS.receiveData conn
-        liftIO $ T.putStrLn msg
+        putStrLn ("Msg: " ++ (T.unpack msg))
+        putStrLn ("Type: " ++ show(typeOf(T.unpack msg)))
+        let playerState = read $ T.unpack msg :: PlayerState
+        putStrLn ("playerState: " ++ (show playerState))
+
+        showClientUI playerState
 
     -- Read from stdin and write to WS
     let loop = do
@@ -56,8 +60,8 @@ makeNameHeader name = [("name", BLU.pack name)]
 clientMain :: IO()
 clientMain = do
     clientInfo <- getClientData
-    printf  "Name: %s\tIP: %s" (clientInfo^.name)  (clientInfo^.ip)
-    let headers = makeNameHeader  (clientInfo^.name) 
-    --withSocketsDo $ WS.runClientWith (clientInfo^.ip) port "/" WS.defaultConnectionOptions headers (application (clientInfo^.name))
-    _ <- showClientUI
-    print()
+    let name = T.unpack $ clientInfo^.nameC
+    let ip = T.unpack $  clientInfo^.ipC
+    let headers = makeNameHeader  name
+    withSocketsDo $ WS.runClientWith ip port "/" WS.defaultConnectionOptions headers (application name)
+    print ()

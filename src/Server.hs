@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Server where
 import Control.Monad (forM_, forever, when)
 import Control.Exception (finally)
@@ -6,9 +5,21 @@ import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
 import Data.ByteString.Char8 as BLU hiding (tail, head, splitAt, map, length, null, filter, putStrLn, any, empty)
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
-import Game (Gamestate (playerOrder), Player (Player), Team (Team), shuffle, cardAssign, turn, Named (name), choseCardGs, checkHandleWin, PlayerState, getPlayerState, isFinished)
-import Utils (parseHeaders, getNameFromHeaders, getDefaultEmptyGamestate, initializeGameState, parseMessage, Message (Message))
+import Game (
+    shuffle, 
+    cardAssign,
+    getDefaultEmptyGamestate,
+    initializeGameState,
+    turn,
+    choseCardGs,
+    checkHandleWin,
+    getPlayerState,
+    isFinished
+    )
+import Objects
+import Utils (parseHeaders, getNameFromHeaders, parseMessage, Message (Message))
 import Constants (host, port)
+import Lens.Micro
 
 type Client = (String, WS.Connection)
 data ServerState = ServerState { clients :: [Client], gameState :: Gamestate, isStarted :: Bool}
@@ -18,6 +29,7 @@ newServer = ServerState { clients = [], gameState = getDefaultEmptyGamestate, is
 
 runServer :: IO ()
 runServer = do
+    putStrLn "Server running..."
     state <- newMVar newServer
     WS.runServer host port $ application state
 
@@ -65,7 +77,7 @@ talk (_, conn) state = forever $ do
             Left err -> WS.sendTextData conn (T.pack err)
             Right message -> do
                 wasValidMove <- performMove message state
-                readMVar state >>= (\st -> putStrLn "Next Turn: " >> print (name (turn $ gameState st))) -- only for debugging, remove later
+                readMVar state >>= (\st -> putStrLn "Next Turn: " >> print ((turn $ gameState st)^.nameP)) -- only for debugging, remove later
                 if wasValidMove
                     then return ()
                     else WS.sendTextData conn (T.pack "Invalid move")
@@ -112,9 +124,9 @@ getPlayersFromClient :: [Client] -> [Player]
 getPlayersFromClient = map (\(playerName, _) -> Player playerName "" [])
 
 getPlayerStateFromGamestate :: Gamestate -> String -> PlayerState
-getPlayerStateFromGamestate gs playerName = getPlayerState gs player
+getPlayerStateFromGamestate gs playerName = getPlayerState gs plr
     where
-        player = head $ filter ((== playerName) . name) (playerOrder gs)
+        plr = head $ filter ((== playerName) . _nameP) (playerOrder gs)
 
 getTeamsFromClient :: [Client] -> IO (Team, Team)
 getTeamsFromClient cls = do
@@ -136,7 +148,7 @@ performMove :: Message -> MVar ServerState -> IO Bool
 performMove (Message player card) state = do
     st <- readMVar state
     let gs = gameState st
-    if player == (name $ turn gs)
+    if player == ((turn gs)^.nameP)
         then do
             let (isValid, newGs) = choseCardGs card gs
             putStrLn $ "chose card is valid: " ++ show isValid

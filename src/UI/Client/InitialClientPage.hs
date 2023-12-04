@@ -25,9 +25,7 @@ import Brick.Focus
   ( focusRingCursor
   )
 import Control.Monad.IO.Class  
-import qualified Data.Text as T
 import qualified Graphics.Vty as V
-import Lens.Micro.TH
 import Objects
 import System.Exit (exitFailure)
 
@@ -41,8 +39,8 @@ data Name = NameField
 mkForm :: ClientInfo -> Form ClientInfo e Name
 mkForm = let label s w = padBottom (Pad 1) $
                     (vLimit 1 $ hLimit 15 $ str s <+> fill ' ') <+> w
-         in newForm [ label "Name" @@=  editTextField name NameField (Just 1)
-                    , label "Server IP: "  @@= editTextField ip IPAddressField (Just 1) -- TODO: Add validation for IP
+         in newForm [ label "Name" @@=  editTextField nameC NameField (Just 1)
+                    , label "Server IP: "  @@= editTextField ipC IPAddressField (Just 1) -- TODO: Add validation for IP
                     ]
 
 
@@ -98,8 +96,8 @@ getClientData = do
           V.setMode (V.outputIface v) V.Mouse True
           return v
 
-        initialUserInfo = ClientInfo { _name = ""
-                                   , _ip = ""
+        initialUserInfo = ClientInfo { _nameC = ""
+                                   , _ipC = ""
                                    }
         f = mkForm initialUserInfo
     initialVty <- buildVty

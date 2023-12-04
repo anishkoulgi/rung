@@ -1,8 +1,13 @@
 module Main (main) where
 
-import Game (startGame)
+import UI.GameMode
+import Objects
+import Client
+import Server (runServer)
 
 main :: IO ()
 main = do
-    _ <- startGame
-    putStrLn ""
+    choice <- selectionMain
+    case choice of
+        HostMode -> runServer
+        ClientMode -> clientMain
