@@ -26,9 +26,11 @@ application state pending = do
     let request = WS.pendingRequest pending
     let headers = parseHeaders (WS.requestHeaders request)
     let playerName    = getNameFromHeaders headers
-    if  not $ null playerName    -- Check that playerName is non-empty 
-        then do
-            acceptConnection state pending playerName
+    s <- readMVar state
+    if isStarted s
+        then WS.rejectRequest pending (BLU.pack "Game has already started")
+    else if  not $ null playerName    -- Check that playerName is non-empty 
+        then acceptConnection state pending playerName
         else WS.rejectRequest pending (BLU.pack "No name specified")
 
 acceptConnection :: MVar ServerState -> WS.PendingConnection -> String -> IO ()

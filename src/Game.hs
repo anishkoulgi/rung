@@ -11,7 +11,7 @@ import Data.List.Split
 import Prelude hiding (round)
 
 data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Show,Enum,Read)
-data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Joker | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
+data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
 data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
 
 class Named a where
@@ -84,7 +84,7 @@ assignCardPs _ = state (\x -> (False,x))
 assignCardPl :: Int -> ([Card],[Player]) -> (Bool,([Card],[Player]))
 assignCardPl _ (remCards,[]) = (True,(remCards,[]))
 assignCardPl numCards currentState@(remCards,p:ps)
-  | numCards >= length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
+  | numCards > length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
   | otherwise = (flg,(finalRemCards,finalPlayers)) where
             newp = Player (name p) (_id p) (take numCards remCards)                                     -- New player with cards assigned 
             (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players
@@ -197,3 +197,4 @@ runGame gs = let vals = cardAssign gs in do {
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
+
