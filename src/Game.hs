@@ -30,7 +30,7 @@ instance Named Team where
 
 data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read,Eq)
 
-data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
+data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit, isTurn :: Bool} deriving (Show,Read)
 
 -- | Randomly shuffle a list
 --   /O(N)/
@@ -109,7 +109,7 @@ allPlayers = [nipun,anish,mahesh,suresh]
 
 -- PlayerState to send to the client of player for displaying on UI
 getPlayerState :: Gamestate -> Player -> PlayerState
-getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs)
+getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs) (turn gs == pl)
 
 -- Based on gamestate, return the player whose turn it is to play
 turn :: Gamestate -> Player
