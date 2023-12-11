@@ -2,23 +2,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 
 module UI.Client.ClientPage (showClientUI) where
 
-import Brick.Main 
+import Brick.Main
     ( appDraw
     , appHandleEvent
     , appStartEvent
-    , halt
     , appAttrMap
     , appChooseCursor
     , App(..)
     , neverShowCursor
-    , defaultMain
+    , customMainWithVty
     )
 import Brick.AttrMap (attrMap, AttrMap, attrName)
+import Brick.BChan
 import qualified Brick.Widgets.Border as B
-import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import  Brick.Widgets.Core 
     ( hLimitPercent
@@ -27,7 +27,6 @@ import  Brick.Widgets.Core
     , padAll
     , padTopBottom
     , padLeftRight
-    , withBorderStyle
     , str
     , fill
     , strWrap
@@ -38,9 +37,9 @@ import  Brick.Widgets.Core
     , withAttr
     )
 import Brick.Types as BT
-import Brick.Util (on, fg)
+import Brick.Util (on)
 import Control.Monad.IO.Class
-import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_, putMVar)
+import Control.Concurrent (MVar, putMVar)
 import qualified Graphics.Vty as V
 
 import Lens.Micro
@@ -50,30 +49,53 @@ import Lens.Micro.Mtl
 import System.Exit (exitFailure)
 
 import Objects
-import Utils (mapWithIndex)
+import Utils (mapWithIndex, getCardNumber,getSuitUnicode,getSuitColor)
 
 data PlayerStateUI =
     PlayerStateUI {
-        _psUI :: PlayerState,
-        _idx :: Int
+        _curPlayerState :: PlayerState,
+        _idx :: Int,
+        _clientMVar :: MVar Card
     }
 
 makeLenses ''PlayerStateUI
 
 logo :: Widget n
-logo = C.hCenter $ padTopBottom 1 $ str $ unlines ["░█████╗░░█████╗░██╗░░░██╗██████╗░████████╗  ██████╗░██╗███████╗░█████╗░███████╗",
-                                                   "██╔══██╗██╔══██╗██║░░░██║██╔══██╗╚══██╔══╝  ██╔══██╗██║██╔════╝██╔══██╗██╔════╝",
-                                                   "██║░░╚═╝██║░░██║██║░░░██║██████╔╝░░░██║░░░  ██████╔╝██║█████╗░░██║░░╚═╝█████╗░░",
-                                                   "██║░░██╗██║░░██║██║░░░██║██╔══██╗░░░██║░░░  ██╔═══╝░██║██╔══╝░░██║░░██╗██╔══╝░░",
-                                                   "╚█████╔╝╚█████╔╝╚██████╔╝██║░░██║░░░██║░░░  ██║░░░░░██║███████╗╚█████╔╝███████╗",
-                                                   "░╚════╝░░╚════╝░░╚═════╝░╚═╝░░╚═╝░░░╚═╝░░░  ╚═╝░░░░░╚═╝╚══════╝░╚════╝░╚══════╝"]
+logo = C.hCenter $ C.vCenter $ padTopBottom 1 $ str $ unlines [ "░█████╗░░█████╗░██╗░░░██╗██████╗░████████╗  ██████╗░██╗███████╗░█████╗░███████╗",
+                                                                "██╔══██╗██╔══██╗██║░░░██║██╔══██╗╚══██╔══╝  ██╔══██╗██║██╔════╝██╔══██╗██╔════╝",
+                                                                "██║░░╚═╝██║░░██║██║░░░██║██████╔╝░░░██║░░░  ██████╔╝██║█████╗░░██║░░╚═╝█████╗░░",
+                                                                "██║░░██╗██║░░██║██║░░░██║██╔══██╗░░░██║░░░  ██╔═══╝░██║██╔══╝░░██║░░██╗██╔══╝░░",
+                                                                "╚█████╔╝╚█████╔╝╚██████╔╝██║░░██║░░░██║░░░  ██║░░░░░██║███████╗╚█████╔╝███████╗",
+                                                                "░╚════╝░░╚════╝░░╚═════╝░╚═╝░░╚═╝░░░╚═╝░░░  ╚═╝░░░░░╚═╝╚══════╝░╚════╝░╚══════╝"]
 
+
+team1Won :: Widget n
+team1Won = C.hCenter $ C.vCenter $ padTopBottom 1 $ withAttr(attrName "cyanOnBlack") $ str s
+    where s = unlines [ "███████████                                       ████     █████   ███   █████                        ███ ███ ███",
+                        "░█░░░███░░░█                                      ░░███    ░░███   ░███  ░░███                        ░███░███░███",
+                        "░   ░███  ░   ██████   ██████   █████████████      ░███     ░███   ░███   ░███   ██████  ████████     ░███░███░███",
+                        "    ░███     ███░░███ ░░░░░███ ░░███░░███░░███     ░███     ░███   ░███   ░███  ███░░███░░███░░███    ░███░███░███",
+                        "    ░███    ░███████   ███████  ░███ ░███ ░███     ░███     ░░███  █████  ███  ░███ ░███ ░███ ░███    ░███░███░███",
+                        "    ░███    ░███░░░   ███░░███  ░███ ░███ ░███     ░███      ░░░█████░█████░   ░███ ░███ ░███ ░███    ░░░ ░░░ ░░░ ",
+                        "    █████   ░░██████ ░░████████ █████░███ █████    █████       ░░███ ░░███     ░░██████  ████ █████    ███ ███ ███",
+                        "       ░░░░░     ░░░░░░   ░░░░░░░░ ░░░░░ ░░░ ░░░░░    ░░░░░         ░░░   ░░░       ░░░░░░  ░░░░ ░░░░░    ░░░ ░░░ ░░░" ]
+
+team2Won :: Widget n
+team2Won = C.hCenter $ padTopBottom 1 $ withAttr(attrName "brightRedOnBlack") $ str s
+    where s = unlines [ "███████████                                        ████████     █████   ███   █████                        ███ ███ ███",
+                        "░█░░░███░░░█                                       ███░░░░███   ░░███   ░███  ░░███                        ░███░███░███",
+                        "░   ░███  ░   ██████   ██████   █████████████     ░░░    ░███    ░███   ░███   ░███   ██████  ████████     ░███░███░███",
+                        "    ░███     ███░░███ ░░░░░███ ░░███░░███░░███       ███████     ░███   ░███   ░███  ███░░███░░███░░███    ░███░███░███",
+                        "    ░███    ░███████   ███████  ░███ ░███ ░███      ███░░░░      ░░███  █████  ███  ░███ ░███ ░███ ░███    ░███░███░███",
+                        "    ░███    ░███░░░   ███░░███  ░███ ░███ ░███     ███      █     ░░░█████░█████░   ░███ ░███ ░███ ░███    ░░░ ░░░ ░░░ ",
+                        "    █████   ░░██████ ░░████████ █████░███ █████   ░██████████       ░░███ ░░███     ░░██████  ████ █████    ███ ███ ███",
+                        "   ░░░░░     ░░░░░░   ░░░░░░░░ ░░░░░ ░░░ ░░░░░    ░░░░░░░░░░         ░░░   ░░░       ░░░░░░  ░░░░ ░░░░░    ░░░ ░░░ ░░░]"]
 
 playerUI :: [Card] -> Int -> Widget n
-playerUI cards idx = hBox [
+playerUI cards index = hBox [
     hLimitPercent 40 $ B.border $ padAll 3 $ vBox [
         fill ' ',
-        C.hCenter $ hBox $ mapWithIndex(\(currentIdx, card) -> renderCard card (currentIdx == idx `mod` length cards))cards,
+        C.hCenter $ hBox $ mapWithIndex(\(currentIdx, card) -> renderCard card (currentIdx == index `mod` length cards))cards,
         fill ' '
     ]]
 
@@ -93,80 +115,54 @@ teamUI (team1, team2) = hBox [
         team1Players = team1^.playersT
         team2Players = team2^.playersT
 
-roundUI :: Int -> [Card] -> Suit -> Widget n
-roundUI rnd pCards s = hBox [
+roundUI :: PlayerState -> Widget n
+roundUI playerState = hBox [
     hLimitPercent 35 $ B.border $ padAll 3 $ vBox [
         fill ' ',
-        C.hCenter $ str $ "Round: " ++ show rnd,
+        C.hCenter $ str rnd,
         fill ' ',
-        C.hCenter $ hBox $ map (\card -> renderCard card False) pCards,
+        C.hCenter $ str "Current Player: " <+> currentPlayerN,
+        fill ' ',
+        C.hCenter $ hBox $ map (\card -> renderCard card False) rndCards,
         fill ' ' ,
-        C.hCenter $ str  "Trump: " <+>  renderSuit s
+        C.hCenter $ str  "Trump: " <+>  renderSuit ts
     ]]
     where
-        renderSuit Spades = withAttr (attrName "blackOnWhite") $ B.border $ padTopBottom 3 $ padLeftRight 2  $ str ([toEnum 0x2660] :: String)
-        renderSuit Diamonds = withAttr (attrName "redOnWhite") $ B.border $ padTopBottom 3 $ padLeftRight 2  $ str ([toEnum 0x2666] :: String)
-        renderSuit Hearts = withAttr (attrName "redOnWhite") $ B.border $ padTopBottom 3 $ padLeftRight 2  $ str ([toEnum 0x2665] :: String)
-        renderSuit _ = withAttr (attrName "blackOnWhite") $ B.border $ padTopBottom 3 $ padLeftRight 2  $ str ([toEnum 0x2663] :: String)
+        rnd            = "Round: " ++ show (playerState^.roundNumPS)
+        rndCards       = playerState^.curRndCardsPS
+        ts             = playerState^.trumpPS
+        currentPlayerN = if playerState^.isTurnPS then 
+                            withAttr(attrName "greenOnBlack") $ str "YOU"
+                         else
+                            str (playerState^.curPlrNamePS)
+        renderSuit s   = withAttr (attrName attrStr) $ B.border $ padTopBottom 3 $ padLeftRight 2  $ str (enumStr)
+            where
+                (attrStr, enumStr) = ((getSuitColor s) ++ "OnWhite", getSuitUnicode s)
+
 
 renderCard :: Card -> Bool-> Widget n
 renderCard card flag= withAttr (attrName getCardAttr)  $ B.border  $ padTopBottom 3 $ padLeftRight 2  $ str (getCardNumber (cardVal) ++ getSuitUnicode (cardSuit))
     where
         cardSuit = suit card
         cardVal  = value card
-        getCardAttr = if flag then "greenOnWhite" else
-                        case cardSuit of
-                            Diamonds -> "redOnWhite"
-                            Hearts   -> "redOnWhite"
-                            Spades   -> "blackOnWhite"
-                            _        -> "blackOnWhite"
-        getSuitUnicode Spades   = [toEnum 0x2660] :: String
-        getSuitUnicode Diamonds = [toEnum 0x2666] :: String
-        getSuitUnicode Hearts   = [toEnum 0x2665] :: String
-        getSuitUnicode _        = [toEnum 0x2663] :: String
-
-        getCardNumber Ace = "A"
-        getCardNumber Two = "2"
-        getCardNumber Three = "3"
-        getCardNumber Four = "4"
-        getCardNumber Five = "5"
-        getCardNumber Six = "6"
-        getCardNumber Seven = "7"
-        getCardNumber Eight = "8"
-        getCardNumber Nine = "9"
-        getCardNumber Ten = "10"
-        getCardNumber King = "K"
-        getCardNumber Queen = "Q"
-        getCardNumber Jack = "J"
+        getCardAttr = (if flag then "green" else (getSuitColor cardSuit)) ++ "OnWhite"
 
 
-
-
-theMap :: AttrMap
-theMap = attrMap globalDefault
-    [ (attrName "blackOnWhite", V.black `on` V.white)
-    , (attrName "redOnWhite",   V.red `on` V.white)
-    , (attrName "greenOnWhite", V.green `on` V.white)
-    ]
-    where globalDefault = V.white `on` V.black
-
-renderUI :: PlayerStateUI -> [Widget n]
-renderUI playerStateUI = [ui]
+renderGameUI :: PlayerStateUI -> [Widget n]
+renderGameUI playerStateUI = [ui]
     where
-        playerState    = playerStateUI^.psUI
-        ui             = logo <=> C.hCenter (hBox [ currentTeamUI, currentRoundUI, playerUI (player (playerStateUI^.psUI)^.cardsP) (playerStateUI^.idx)])
-        currentRoundUI = roundUI (roundNumber playerState) (currentRoundCard playerState) (trumpSuit playerState)
-        currentTeamUI  = teamUI (teamInfo playerState)
+        playerState    = playerStateUI^.curPlayerState
+        ui             = logo <=> C.hCenter (hBox [ currentTeamUI, currentRoundUI, currentPlayerUI])
+        currentRoundUI = roundUI playerState
+        currentTeamUI  = teamUI (playerState^.teamsPS)
+        currentPlayerUI = playerUI (playerStateUI^.curPlayerState.playerPS.cardsP) (playerStateUI^.idx)
 
-appEvent :: BrickEvent () e -> EventM () PlayerStateUI ()
-appEvent (BT.VtyEvent (V.EvKey V.KEnter [])) = halt
-appEvent (BT.VtyEvent (V.EvKey V.KEsc []))   = liftIO exitFailure
-appEvent (BT.VtyEvent( V.EvKey V.KLeft [] )) = idx %= (\currentIdx -> (max (currentIdx-1) 0))
-appEvent (BT.VtyEvent( V.EvKey V.KRight [] )) = idx %= (\currentIdx -> (max (currentIdx+1) 0))
-appEvent _ = return ()
+renderWinUI :: Int -> [Widget n]
+renderWinUI i
+    | i == 1    = [team1Won]
+    | otherwise = [team2Won]
 
-
-app :: App PlayerStateUI e ()
+app :: App PlayerStateUI PlayerState ()
 app  =
     App { appDraw =  renderUI
         , appHandleEvent = appEvent
@@ -175,11 +171,58 @@ app  =
         , appChooseCursor = neverShowCursor
         }
 
-showClientUI :: PlayerState -> MVar Card -> IO ()
-showClientUI playerState cardState = do --mvar
-    let initialPlayerStateUI = PlayerStateUI playerState 0
-    finalState <- (defaultMain app initialPlayerStateUI)
-    let selectedCard = ((player (finalState^.psUI))^.cardsP) !! (finalState^.idx)
-    putMVar cardState selectedCard
-    putStrLn("")
-    -- return $ finalState^.psUI
+renderUI :: PlayerStateUI -> [Widget n]
+renderUI playerStateUI = if isOver then renderWinUI winner else renderGameUI playerStateUI
+    where
+        playerState = playerStateUI^.curPlayerState
+        tm = playerState^.teamsPS
+        (isOver, winner) = fn tm
+        fn (Team _ 7 _ ,  _)         = (True,1)   -- Team 1 has 7 points
+        fn (         _ , Team _ 7 _) = (True,2)   -- Team 2 has 7 points
+        fn  _                        = (False,-1) -- Ongoing game
+
+appEvent :: BrickEvent () PlayerState -> EventM () PlayerStateUI ()
+appEvent (AppEvent newPlayerState)         = curPlayerState .= newPlayerState
+appEvent (BT.VtyEvent(V.EvKey V.KEsc   [])) = liftIO exitFailure
+appEvent (BT.VtyEvent(V.EvKey V.KLeft  [])) = updateIdx (-)
+appEvent (BT.VtyEvent(V.EvKey V.KRight [])) = updateIdx (+)
+appEvent (BT.VtyEvent(V.EvKey V.KEnter [])) = selectCard
+    where
+        selectCard :: EventM () PlayerStateUI ()
+        selectCard = do
+            currentPlayerStateUI <- get
+            let playerCards = currentPlayerStateUI^.curPlayerState.playerPS.cardsP
+            let numCards = length playerCards
+            _ <- liftIO $ putMVar (currentPlayerStateUI^.clientMVar) (playerCards !! ((currentPlayerStateUI^.idx) `mod` numCards)) 
+            return ()
+appEvent _ = return ()
+
+updateIdx :: (Int -> Int -> Int) -> EventM () PlayerStateUI ()
+updateIdx op = do
+    currentPlayerStateUI <- get
+    let currentIdx = currentPlayerStateUI^.idx
+    let cps = currentPlayerStateUI^.curPlayerState
+    let isTurn = cps^.isTurnPS
+    let numCards = length (cps^.playerPS.cardsP)
+    let newIdx = if isTurn then (currentIdx `op` 1) `mod` numCards else currentIdx
+    idx .= newIdx
+    return ()
+
+theMap :: AttrMap
+theMap = attrMap globalDefault
+    [ (attrName "blackOnWhite", V.black `on` V.white)
+    , (attrName "redOnWhite",   V.red `on` V.white)
+    , (attrName "greenOnWhite", V.green `on` V.white)
+    , (attrName "greenOnBlack", V.green `on` V.black)
+    , (attrName "cyanOnBlack", V.cyan `on` V.black)
+    , (attrName "brightRedOnBlack", V.brightRed `on` V.black)
+    ]
+    where globalDefault = V.white `on` V.black
+
+showClientUI ::  BChan PlayerState -> MVar Card -> IO ()
+showClientUI playerStateBChan cardStateMVar = do
+    let initialPlayerStateUI = PlayerStateUI (PlayerState (Player "" "" []) [] 0 (Team "" 0 ("",""), Team "" 0 ("","")) Spades False "") 0 cardStateMVar
+    let builder = V.mkVty V.defaultConfig 
+    vty <- builder
+    (_finalState, _finalVty) <- (customMainWithVty vty builder (Just playerStateBChan) app initialPlayerStateUI)
+    return ()

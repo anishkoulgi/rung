@@ -1,4 +1,14 @@
-module Utils(parseHeaders, Message(..), getNameFromHeaders, parseMessage,mapWithIndex) where
+module Utils
+    ( parseHeaders
+    , Message(..)
+    , getNameFromHeaders
+    , parseMessage
+    , mapWithIndex
+    , getCardNumber
+    , getSuitUnicode
+    , getSuitColor
+    ) 
+where
 import Data.CaseInsensitive (original)
 import qualified Data.ByteString.Char8 as BLU 
 import qualified Data.Maybe
@@ -36,3 +46,37 @@ mapWithIndex :: ((Int,a) -> b) -> [a] -> [b]
 mapWithIndex f xs = map f z
     where
         z = zip [0..] xs
+
+---------------------------------------------------------------------------------------------------
+-- Card Object conversion functions
+---------------------------------------------------------------------------------------------------
+
+getCardNumber :: Value -> String
+getCardNumber Ace = "A"
+getCardNumber Two = "2"
+getCardNumber Three = "3"
+getCardNumber Four = "4"
+getCardNumber Five = "5"
+getCardNumber Six = "6"
+getCardNumber Seven = "7"
+getCardNumber Eight = "8"
+getCardNumber Nine = "9"
+getCardNumber Ten = "10"
+getCardNumber King = "K"
+getCardNumber Queen = "Q"
+getCardNumber Jack = "J"
+
+
+getSuitUnicode :: Suit -> String
+getSuitUnicode s = case s of
+    Spades   -> [toEnum 0x2660] :: String
+    Diamonds ->  [toEnum 0x2666] :: String
+    Hearts   -> [toEnum 0x2665] :: String
+    _        -> [toEnum 0x2663] :: String
+
+getSuitColor :: Suit -> String
+getSuitColor s = case s of
+    Spades   -> "black"
+    Hearts   -> "red"
+    Diamonds -> "red"
+    _        -> "black"

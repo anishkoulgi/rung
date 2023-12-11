@@ -22,7 +22,14 @@ module Objects (
     ipC,
     Choice (..),
     Gamestate (..),
-    PlayerState (..) 
+    PlayerState (..),
+    playerPS,
+    curRndCardsPS,
+    roundNumPS,
+    teamsPS,
+    trumpPS,
+    isTurnPS,
+    curPlrNamePS 
 ) where
 
 
@@ -43,7 +50,9 @@ makeLenses ''Team
 
 data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read, Eq)
 
-data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit, currentPlayer :: Bool} deriving (Show,Read)
+data PlayerState = PlayerState {_playerPS::Player, _curRndCardsPS :: [Card], _roundNumPS::Int, _teamsPS::(Team,Team), _trumpPS:: Suit, _isTurnPS :: Bool, _curPlrNamePS :: String} deriving (Show,Read)
+makeLenses ''PlayerState
+
 
 data Choice = HostMode | ClientMode
             deriving Show
