@@ -5,7 +5,7 @@ module Client (clientMain) where
 
 
 --------------------------------------------------------------------------------
-import           Control.Concurrent  (forkIO)
+import           Control.Concurrent  (forkIO, newEmptyMVar, MVar, readMVar, modifyMVar_, takeMVar)
 import           Control.Monad       (forever, unless)
 import           Control.Monad.Trans (liftIO)
 import           Network.Socket      (withSocketsDo)
@@ -29,7 +29,7 @@ import Data.Typeable
 application :: String -> WS.ClientApp ()
 application name conn = do
     putStrLn "Connected!"
-
+    clientState <- newEmptyMVar
     -- Fork a thread that writes WS data to stdout
     _ <- forkIO $ forever $ do
         msg <- WS.receiveData conn
@@ -37,19 +37,16 @@ application name conn = do
         putStrLn ("Type: " ++ show(typeOf(T.unpack msg)))
         let playerState = read $ T.unpack msg :: PlayerState
         putStrLn ("playerState: " ++ (show playerState))
+        showClientUI playerState clientState
+        
+    _ <- forever $ do
+        putStrLn("In second thread wait")
+        card <- takeMVar clientState
+        putStrLn ("After accesing MVar")
+        let message = Message name card 
+        putStrLn $ "Sending message: " ++ show message
+        WS.sendTextData conn (T.pack $ show message)
 
-        showClientUI playerState
-
-    -- Read from stdin and write to WS
-    let loop = do
-            line <- T.getLine
-            case (readEither (T.unpack line) :: Either String Card) of
-                Left _ -> putStrLn "Invalid card format" >> loop
-                Right card -> do
-                    let message = Message name card 
-                    putStrLn $ "Sending message: " ++ show message
-                    WS.sendTextData conn (T.pack $ show message) >> loop
-    _ <- loop
     WS.sendClose conn ("Bye!" :: Text)
 
 -- | Creates the game name header for the WS request

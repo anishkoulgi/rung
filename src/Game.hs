@@ -91,7 +91,7 @@ allPlayers = [nipun,anish,mahesh,suresh]
 
 -- PlayerState to send to the client of player for displaying on UI
 getPlayerState :: Gamestate -> Player -> PlayerState
-getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs)
+getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs) (turn gs == pl)
 
 -- Based on gamestate, return the player whose turn it is to play
 turn :: Gamestate -> Player

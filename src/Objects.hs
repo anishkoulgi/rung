@@ -43,7 +43,7 @@ makeLenses ''Team
 
 data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read, Eq)
 
-data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit} deriving (Show,Read)
+data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit, currentPlayer :: Bool} deriving (Show,Read)
 
 data Choice = HostMode | ClientMode
             deriving Show

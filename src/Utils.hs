@@ -1,4 +1,4 @@
-module Utils(parseHeaders, Message(..), getNameFromHeaders, parseMessage) where
+module Utils(parseHeaders, Message(..), getNameFromHeaders, parseMessage,mapWithIndex) where
 import Data.CaseInsensitive (original)
 import qualified Data.ByteString.Char8 as BLU 
 import qualified Data.Maybe
@@ -30,3 +30,9 @@ parseMessage :: Text -> Either String Message
 parseMessage msg = case readEither $ unpack msg :: Either String Message of
     Left  _       -> Left "Invalid message format"
     Right message -> Right message
+
+
+mapWithIndex :: ((Int,a) -> b) -> [a] -> [b]
+mapWithIndex f xs = map f z
+    where
+        z = zip [0..] xs
