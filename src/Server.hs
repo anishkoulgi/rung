@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant if" #-}
 module Server where
 import Control.Monad (forM_, forever, when)
 import Control.Exception (finally)
@@ -25,13 +26,26 @@ application :: MVar ServerState -> WS.ServerApp
 application state pending = do
     let request = WS.pendingRequest pending
     let headers = parseHeaders (WS.requestHeaders request)
-    let playerName    = getNameFromHeaders headers
+    let playerName = getNameFromHeaders headers
     s <- readMVar state
-    if isStarted s
-        then WS.rejectRequest pending (BLU.pack "Game has already started")
-    else if  not $ null playerName    -- Check that playerName is non-empty 
-        then acceptConnection state pending playerName
-        else WS.rejectRequest pending (BLU.pack "No name specified")
+    if checkSameName s playerName then WS.rejectRequest pending (BLU.pack "Player with same name already playing")
+    else if isStarted s then
+            if length (clients s) == 4 || not (checkStateExist s playerName)
+                then WS.rejectRequest pending (BLU.pack "Game has already started with all 4 clients")
+            else checkAndAcceptConnection state playerName pending
+        else checkAndAcceptConnection state playerName pending
+
+
+checkSameName :: ServerState -> String -> Bool
+checkSameName state playerName = any (\(nm,_) -> nm == playerName ) (clients state)
+
+checkStateExist :: ServerState -> String -> Bool
+checkStateExist state playerName = any (\pl -> name pl == playerName) (playerOrder $ gameState state)
+
+checkAndAcceptConnection :: MVar ServerState -> String -> WS.ServerApp
+checkAndAcceptConnection state playerName pending = if not $ null playerName
+                                                    then acceptConnection state pending playerName
+                                                    else WS.rejectRequest pending (BLU.pack "No name specified")
 
 acceptConnection :: MVar ServerState -> WS.PendingConnection -> String -> IO ()
 acceptConnection state pending playerName = do
@@ -49,6 +63,7 @@ acceptConnection state pending playerName = do
         finally (talk client state) (disconnect client)
         where
             disconnect client = do
+                putStrLn ("Client Disconnected: " ++ fst client)
                 modifyMVar_ state $ \s -> do
                     return (removeClient client s)
 
@@ -88,8 +103,9 @@ addClientToState client state = do
         return clientList
 
 initGame :: MVar ServerState -> IO ()
-initGame state = do
-    modifyMVar_ state $ \s -> do
+initGame state =  do
+    gs <- readMVar state
+    if isStarted gs then return () else modifyMVar_ state $ \s -> do
         teams <- getTeamsFromClient $ clients s
         initialGamestate <- initializeGameState (getPlayersFromClient $ clients s) teams
         let gamestate = cardAssign initialGamestate
