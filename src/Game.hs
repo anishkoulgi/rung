@@ -141,7 +141,7 @@ isFinished (Gamestate _ _ _ _ tm _) = fn tm where
 -- Convert card to number based on trump and current suit of the game
 cardToNum :: Suit -> Suit -> Card -> Int
 cardToNum trmp color crd
-  | suit crd == trmp = -100 * (1 + fromEnum (value crd))
+  | suit crd == trmp = -1000 * (1 + fromEnum (value crd))
   | suit crd == color = -10 * (1 + fromEnum (value crd))
   | otherwise = 0
 
