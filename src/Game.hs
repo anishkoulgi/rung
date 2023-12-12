@@ -187,7 +187,8 @@ getDefaultEmptyGamestate =  Gamestate [] 0 [] [] (Team "" 0 ("",""), Team "" 0 (
 initializeGameState :: [Player] -> (Team, Team) -> IO Gamestate
 initializeGameState players teams = do
     deck <- shuffle initialDeck
-    return (Gamestate deck 0 players [] teams Spades)
+    shfSuit <- shuffle [Spades .. Diamonds]
+    return (Gamestate deck 0 players [] teams (head shfSuit))
 
 -- Helpers for testing
 team1 :: Team
