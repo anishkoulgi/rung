@@ -1,8 +1,9 @@
 module Main (main) where
 
-import UI.GameMode
+import UI.GameMode (selectionMain)
+import UI.Rules (rulesMain)
 import Objects
-import Client
+import Client (clientMain)
 import Server (runServer)
 
 main :: IO ()
@@ -11,3 +12,4 @@ main = do
     case choice of
         HostMode -> runServer
         ClientMode -> clientMain
+        RuleMode -> rulesMain >> main

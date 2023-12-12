@@ -186,6 +186,7 @@ renderUI playerStateUI = if isOver then renderWinUI winner else renderGameUI pla
 appEvent :: BrickEvent () PlayerState -> EventM () PlayerStateUI ()
 appEvent (AppEvent newPlayerState)         = curPlayerState .= newPlayerState
 appEvent (BT.VtyEvent(V.EvKey V.KEsc   [])) = liftIO exitFailure
+appEvent (BT.VtyEvent(V.EvKey (V.KChar 'q') [])) = liftIO exitFailure
 appEvent (BT.VtyEvent(V.EvKey V.KLeft  [])) = updateIdx (-)
 appEvent (BT.VtyEvent(V.EvKey V.KRight [])) = updateIdx (+)
 appEvent (BT.VtyEvent(V.EvKey V.KEnter [])) = selectCard
