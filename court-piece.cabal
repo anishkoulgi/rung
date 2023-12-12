@@ -28,8 +28,11 @@ library
       Client
       Constants
       Game
-      Lib
+      Objects
       Server
+      UI.Client.ClientPage
+      UI.Client.InitialClientPage
+      UI.GameMode
       Utils
   other-modules:
       Paths_court_piece
@@ -41,15 +44,20 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
     , case-insensitive
     , containers
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , network
     , random
     , split
     , text
     , utf8-string
+    , vty
     , websockets
   default-language: Haskell2010
 
@@ -65,16 +73,21 @@ executable court-piece-exe
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
     , case-insensitive
     , containers
     , court-piece
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , network
     , random
     , split
     , text
     , utf8-string
+    , vty
     , websockets
   default-language: Haskell2010
 
@@ -91,15 +104,20 @@ test-suite court-piece-test
   build-depends:
       array
     , base >=4.7 && <5
+    , brick ==1.9
     , bytestring
     , case-insensitive
     , containers
     , court-piece
+    , microlens
+    , microlens-mtl
+    , microlens-th
     , mtl
     , network
     , random
     , split
     , text
     , utf8-string
+    , vty
     , websockets
   default-language: Haskell2010

@@ -10,27 +10,9 @@ import Data.List
 import Data.List.Split
 import Prelude hiding (round)
 
-data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Show,Enum,Read)
-data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace deriving (Ord,Eq,Show,Enum,Read)
-data Card = Card {suit:: Suit, value::Value} deriving (Eq,Show,Read)
+import Lens.Micro
 
-class Named a where
-    name :: a -> String
-
-data Player = Player {_nameP::String, _id::String, cards::[Card]} deriving (Eq,Show,Read)
-data Team = Team {_nameT::String, points::Int, players::(String,String)} deriving (Eq,Show,Read)
-
-instance Named Player where
-  name :: Player -> String
-  name = _nameP
-
-instance Named Team where
-  name :: Team -> String
-  name = _nameT
-
-data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[Player], currentRound::[Card], teams::(Team,Team), trump::Suit} deriving (Show,Read,Eq)
-
-data PlayerState = PlayerState {player::Player, currentRoundCard :: [Card], roundNumber::Int, teamInfo::(Team,Team), trumpSuit:: Suit, isTurn :: Bool} deriving (Show,Read)
+import Objects
 
 -- | Randomly shuffle a list
 --   /O(N)/
@@ -56,7 +38,7 @@ assignCards = state assignCardGs
 -- Based on the gamestate , see if assignment is required
 -- Checks if the current player doesn't have cards to assign
 isAssignmentRequired :: Gamestate -> Bool
-isAssignmentRequired gs = null (cards (turn gs))
+isAssignmentRequired gs = null ((turn gs^.cardsP))
 
 
 -- Take a gamestate and return a new one with cards assigned based on the number of rounds
@@ -86,10 +68,10 @@ assignCardPl _ (remCards,[]) = (True,(remCards,[]))
 assignCardPl numCards currentState@(remCards,p:ps)
   | numCards > length remCards = (False,currentState)                                          -- Insufficient cards remaining, return flag as False 
   | otherwise = (flg,(finalRemCards,finalPlayers)) where
-            newp = Player (name p) (_id p) (take numCards remCards)                                     -- New player with cards assigned 
+            newp = Player (p^.nameP) (p^.idP) (take numCards remCards)                                     -- New player with cards assigned 
             (flg,(updatedRemCards,plyrs)) = assignCardPl numCards (drop numCards remCards,ps)   -- Assign cards to other players
             finalRemCards = if flg then updatedRemCards else remCards
-            finalPlayers = if flg then newp:plyrs else p:ps                                            
+            finalPlayers = if flg then newp:plyrs else p:ps
 
 
 
@@ -109,7 +91,7 @@ allPlayers = [nipun,anish,mahesh,suresh]
 
 -- PlayerState to send to the client of player for displaying on UI
 getPlayerState :: Gamestate -> Player -> PlayerState
-getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs) (turn gs == pl)
+getPlayerState gs pl = PlayerState pl (currentRound gs) (round gs) (teams gs) (trump gs) (turn gs == pl) (turn gs^.nameP)
 
 -- Based on gamestate, return the player whose turn it is to play
 turn :: Gamestate -> Player
@@ -127,7 +109,7 @@ getValidSuits g = case currentRound g of
 
 -- Check if the current player has no card matching the suit of the game
 checkNoCardPossible :: Gamestate -> Bool
-checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) (cards (turn gs)) -- get the cards of the current player whose "turn" it is and check if they have atleast 1 card in this suit
+checkNoCardPossible gs = any ((\st -> st `elem` getValidSuits gs) . suit) ((turn gs)^.cardsP) -- get the cards of the current player whose "turn" it is and check if they have atleast 1 card in this suit
 
 -- Helper function to replace first occurence of old val with new one in a list
 replaceVal :: Eq a => a -> a -> [a] -> [a]
@@ -137,7 +119,7 @@ replaceVal old new lst = case lst of
 
 -- Check if the current card chosen is valid or not
 isChosenCardValid :: Card -> Gamestate -> Bool
-isChosenCardValid crd gs = elem crd (cards (turn gs)) && (not (checkNoCardPossible gs) || elem (suit crd) (getValidSuits gs))
+isChosenCardValid crd gs = elem crd ((turn gs)^.cardsP) && (not (checkNoCardPossible gs) || elem (suit crd) (getValidSuits gs))
 
 
 -- Chose card to update the gamestate, see if we were able to chose card or wrong card was chosen
@@ -146,7 +128,7 @@ choseCardGs crd gs@(Gamestate remC rnd pls cr tm trmp) = if isChosenCardValid cr
                                 then (True,Gamestate remC rnd (replaceVal oldP newP pls) (cr ++ [crd]) tm trmp)
                                 else (False,gs) where
                                  oldP = turn gs
-                                 newP = Player (name oldP) (_id oldP) (delete crd (cards oldP))
+                                 newP = Player (oldP ^. nameP) (oldP^.idP) (delete crd  (oldP^.cardsP))
 
 -- Check to see if the game is finished
 isFinished :: Gamestate -> Bool
@@ -172,7 +154,7 @@ winningCard st crds = head sortCrds where
 
 -- If the winning player is in the team, increment the points of the team
 updateWinningPl :: Player -> Team -> Team
-updateWinningPl pl t@(Team x pt (a,b)) = if name pl `elem` [a,b] then Team x (pt+1) (a,b) else t
+updateWinningPl pl t@(Team x pt (a,b)) = if pl^.nameP `elem` [a,b] then Team x (pt+1) (a,b) else t
 
 -- Reorder players based on the player who won the previous game
 reorderPL :: Player -> [Player] -> [Player]
@@ -199,6 +181,15 @@ checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
 checkHandleWin gg = gg
 
 
+getDefaultEmptyGamestate ::  Gamestate
+getDefaultEmptyGamestate =  Gamestate [] 0 [] [] (Team "" 0 ("",""), Team "" 0 ("","")) Spades
+
+initializeGameState :: [Player] -> (Team, Team) -> IO Gamestate
+initializeGameState players teams = do
+    deck <- shuffle initialDeck
+    shfSuit <- shuffle [Spades .. Diamonds]
+    return (Gamestate deck 0 players [] teams (head shfSuit))
+
 -- Helpers for testing
 team1 :: Team
 team1 = Team "one" 0 ("Nipun","Anish")
@@ -209,7 +200,7 @@ team2 = Team "two" 0 ("Mahesh","Suresh")
 -- "Nipun"
 
 showPts :: (Team,Team) -> String
-showPts (a,b) = name a ++ " : " ++ show (points a) ++ " -- " ++ name b ++ " : " ++ show (points b)
+showPts (a,b) = a^.nameT ++ " : " ++ show (a^.pointsT) ++ " -- " ++ b^.nameT ++ " : " ++ show (b^.pointsT)
 
 -- Run the game on console where each player takes turn for manual testing
 runGame :: Gamestate -> IO ()
@@ -218,17 +209,8 @@ runGame gs = let vals = cardAssign gs in do {
     print ("Round Number: " ++ show ( round vals));
     print (showPts (teams vals) );
     print (currentRound vals);
-    putStrLn ("Chose card player " ++ name (turn vals));
-    print (cards (turn vals));
+    putStrLn ("Chose card player " ++ (turn vals)^.nameP);
+    print ((turn vals)^.cardsP);
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
-
-
-
-
-
-
-
-
-
