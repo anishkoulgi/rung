@@ -1,55 +1,69 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Client where
+module Client (clientMain) where
 --------------------------------------------------------------------------------
 
 
 
 --------------------------------------------------------------------------------
-import           Control.Concurrent  (forkIO)
-import           Control.Monad       (forever, unless)
-import           Control.Monad.Trans (liftIO)
+import           Control.Concurrent  (forkIO, newEmptyMVar, takeMVar)
+import           Control.Monad       (forever)
 import           Network.Socket      (withSocketsDo)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import qualified Data.Text.IO        as T
 import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
-import Constants (host, port)
-import Text.Read (readEither)
-import Game (Card)
+import Brick.BChan
+import Constants (port)
+import Text.Read (readMaybe)
 import Utils (Message(Message))
+import UI.Client.InitialClientPage(getClientData)
+import UI.Client.ClientPage(showClientUI)
+import Objects
+import Lens.Micro
 
 
 --------------------------------------------------------------------------------
 application :: String -> WS.ClientApp ()
 application name conn = do
     putStrLn "Connected!"
-
+    clientState <- newEmptyMVar
+    bc <- newBChan 1
     -- Fork a thread that writes WS data to stdout
     _ <- forkIO $ forever $ do
         msg <- WS.receiveData conn
-        liftIO $ T.putStrLn msg
+        -- putStrLn ("Msg: " ++ (T.unpack msg))
+        -- putStrLn ("Type: " ++ show(typeOf(T.unpack msg)))
+        let mPlayerState = readMaybe $ T.unpack msg :: Maybe PlayerState
+        case mPlayerState of
+            (Just playerState) -> writeBChan bc playerState
+            _ -> return ()
+        -- putStrLn ("playerState: " ++ (show playerState))
+        
+        
+    _ <- forkIO $ do
+        showClientUI bc clientState
 
-    -- Read from stdin and write to WS
-    let loop = do
-            line <- T.getLine
-            case (readEither (T.unpack line) :: Either String Card) of
-                Left _ -> putStrLn "Invalid card format" >> loop
-                Right card -> do
-                    let message = Message name card 
-                    putStrLn $ "Sending message: " ++ show message
-                    WS.sendTextData conn (T.pack $ show message) >> loop
-    _ <- loop
+    _ <- forever $ do
+        -- putStrLn("In second thread wait")
+        card <- takeMVar clientState
+        -- putStrLn ("After accesing MVar")
+        let message = Message name card 
+        -- putStrLn $ "Sending message: " ++ show message
+        WS.sendTextData conn (T.pack $ show message)
+
     WS.sendClose conn ("Bye!" :: Text)
-
-runClient :: IO ()
-runClient = do
-    putStrLn "Enter your name:"
-    name <- getLine
-    let headers = makeNameHeader name 
-    withSocketsDo $ WS.runClientWith host port "/" WS.defaultConnectionOptions headers (application name)
 
 -- | Creates the game name header for the WS request
 makeNameHeader :: String -> Headers
 makeNameHeader name = [("name", BLU.pack name)]
+
+
+clientMain :: IO()
+clientMain = do
+    clientInfo <- getClientData
+    let name = T.unpack $ clientInfo^.nameC
+    let ip = T.unpack $  clientInfo^.ipC
+    let headers = makeNameHeader  name
+    withSocketsDo $ WS.runClientWith ip port "/" WS.defaultConnectionOptions headers (application name)
+    print ()

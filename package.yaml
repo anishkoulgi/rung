@@ -26,6 +26,13 @@ dependencies:
 - random
 - split
 - mtl
+- brick == 1.9
+- vty
+- microlens
+- mtl
+- microlens-mtl
+- microlens-th
+- text
 - websockets
 - text
 - network
