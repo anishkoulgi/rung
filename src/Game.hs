@@ -132,11 +132,10 @@ choseCardGs crd gs@(Gamestate remC rnd pls cr tm trmp) = if isChosenCardValid cr
 
 -- Check to see if the game is finished
 isFinished :: Gamestate -> Bool
-isFinished (Gamestate _ rnd _ _ tm _) = fn rnd tm where
-  fn 4 _ = True               -- Last round
-  fn _ (Team _ 7 _,_) = True  -- Team 1 has 7 points
-  fn _ (_, Team _ 7 _) = True -- Team 2 has 7 points
-  fn _ _ = False              -- Otherwise game hasn't finished
+isFinished (Gamestate _ _ _ _ tm _) = fn tm where
+  fn (Team _ 7 _,_) = True  -- Team 1 has 7 points
+  fn (_, Team _ 7 _) = True -- Team 2 has 7 points
+  fn _ = False              -- Otherwise game hasn't finished
 
 
 -- Convert card to number based on trump and current suit of the game
