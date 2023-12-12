@@ -33,16 +33,14 @@ runServer = do
     -- putStrLn "Server running..."
     state <- newMVar newServer
     putStrLn "Server running..."
-    WS.runServer host port $ application state
-
-application :: MVar ServerState ->  WS.ServerApp
-application state pending = do
     stateBChan <- newBChan 1
-    
     _ <- forkIO $ do
-        putStrLn "UI Called"
         serverUI stateBChan
+    WS.runServer host port $ application state stateBChan
 
+application :: MVar ServerState -> BChan [Client] -> WS.ServerApp
+application state stateBChan pending = do
+    
     let request = WS.pendingRequest pending
     let headers = parseHeaders (WS.requestHeaders request)
     let playerName = getNameFromHeaders headers
@@ -61,12 +59,12 @@ checkSameName state playerName = any (\(nm,_) -> nm == playerName ) (clients sta
 checkStateExist :: ServerState -> String -> Bool
 checkStateExist state playerName = any (\pl -> pl^.nameP == playerName) (playerOrder $ gameState state)
 
-checkAndAcceptConnection :: MVar ServerState -> BChan ServerState -> String -> WS.ServerApp
+checkAndAcceptConnection :: MVar ServerState -> BChan [Client] -> String -> WS.ServerApp
 checkAndAcceptConnection state stateBChan playerName pending = if not $ null playerName
                                                     then acceptConnection state stateBChan pending playerName
                                                     else WS.rejectRequest pending (BLU.pack "No name specified")
 
-acceptConnection :: MVar ServerState -> BChan ServerState -> WS.PendingConnection -> String -> IO ()
+acceptConnection :: MVar ServerState -> BChan [Client] -> WS.PendingConnection -> String -> IO ()
 acceptConnection state stateBChan pending playerName = do
     conn <- WS.acceptRequest pending
     let client = (playerName, conn)
@@ -86,7 +84,7 @@ acceptConnection state stateBChan pending playerName = do
                 -- putStrLn ("Client Disconnected: " ++ fst client)
                 modifyMVar_ state $ \s -> do
                     let updatedServerState = removeClient client s
-                    writeBChan stateBChan updatedServerState
+                    writeBChan stateBChan (clients updatedServerState)
                     return updatedServerState
 
 talk :: Client -> MVar ServerState -> IO ()
@@ -119,12 +117,12 @@ broadcastMessage state = do
 -- Helper Functions for modifying ServerState
 -- ----------------------------------------------------------------------------------------------
 
-addClientToState :: Client ->  MVar ServerState -> BChan ServerState -> IO ()
+addClientToState :: Client ->  MVar ServerState -> BChan [Client] -> IO ()
 addClientToState client state stateBChan = do
     modifyMVar_ state $ \s -> do
-        let clientList = addNewClient client s
-        writeBChan stateBChan clientList
-        return clientList
+        let newState = addNewClient client s
+        writeBChan stateBChan (clients newState)
+        return newState
 
 initGame :: MVar ServerState -> IO ()
 initGame state =  do
