@@ -1,10 +1,8 @@
 import Test.Tasty
 import Common
 import Game
-    ( Card(..),
-      Player(..),
-      Suit(..),
-      Value(..), Gamestate (..), Team (Team,points), cardAssign, initialDeck, choseCardGs, replaceVal, reorderPL, checkHandleWin, winningCard, choseCard)
+    ( cardAssign, initialDeck, choseCardGs, replaceVal, reorderPL, checkHandleWin, winningCard, choseCard)
+import Objects
 import Prelude hiding (round)
 import Control.Monad.State (execState)
 
@@ -36,18 +34,18 @@ cardsAfterRoundZero = drop 20 initialDeck
 
 orderAfter1Assign :: [Player]
 orderAfter1Assign = [
-  Player {_nameP = "Nipun", _id = "1", cards = [Card {suit = Spades, value = Two},Card {suit = Spades, value = Three},Card {suit = Spades, value = Four},Card {suit = Spades, value = Five},Card {suit = Spades, value = Six}]},
-  Player {_nameP = "Anish", _id = "2", cards = [Card {suit = Spades, value = Seven},Card {suit = Spades, value = Eight},Card {suit = Spades, value = Nine},Card {suit = Spades, value = Ten},Card {suit = Spades, value = Jack}]},
-  Player {_nameP = "Mahesh", _id = "3", cards = [Card {suit = Spades, value = Queen},Card {suit = Spades, value = King},Card {suit = Spades, value = Ace},Card {suit = Hearts, value = Two},Card {suit = Hearts, value = Three}]},
-  Player {_nameP = "Suresh", _id = "4", cards = [Card {suit = Hearts, value = Four},Card {suit = Hearts, value = Five},Card {suit = Hearts, value = Six},Card {suit = Hearts, value = Seven},Card {suit = Hearts, value = Eight}]}
+  Player {_nameP = "Nipun", _idP = "1", _cardsP = [Card {suit = Spades, value = Two},Card {suit = Spades, value = Three},Card {suit = Spades, value = Four},Card {suit = Spades, value = Five},Card {suit = Spades, value = Six}]},
+  Player {_nameP = "Anish", _idP = "2", _cardsP = [Card {suit = Spades, value = Seven},Card {suit = Spades, value = Eight},Card {suit = Spades, value = Nine},Card {suit = Spades, value = Ten},Card {suit = Spades, value = Jack}]},
+  Player {_nameP = "Mahesh", _idP = "3", _cardsP = [Card {suit = Spades, value = Queen},Card {suit = Spades, value = King},Card {suit = Spades, value = Ace},Card {suit = Hearts, value = Two},Card {suit = Hearts, value = Three}]},
+  Player {_nameP = "Suresh", _idP = "4", _cardsP = [Card {suit = Hearts, value = Four},Card {suit = Hearts, value = Five},Card {suit = Hearts, value = Six},Card {suit = Hearts, value = Seven},Card {suit = Hearts, value = Eight}]}
   ]
 
 orderAfter1Chose :: [Player]
 orderAfter1Chose = [
-  Player {_nameP = "Nipun", _id = "1", cards = [Card {suit = Spades, value = Two},Card {suit = Spades, value = Three},Card {suit = Spades, value = Five},Card {suit = Spades, value = Six}]},
-  Player {_nameP = "Anish", _id = "2", cards = [Card {suit = Spades, value = Seven},Card {suit = Spades, value = Eight},Card {suit = Spades, value = Nine},Card {suit = Spades, value = Ten},Card {suit = Spades, value = Jack}]},
-  Player {_nameP = "Mahesh", _id = "3", cards = [Card {suit = Spades, value = Queen},Card {suit = Spades, value = King},Card {suit = Spades, value = Ace},Card {suit = Hearts, value = Two},Card {suit = Hearts, value = Three}]},
-  Player {_nameP = "Suresh", _id = "4", cards = [Card {suit = Hearts, value = Four},Card {suit = Hearts, value = Five},Card {suit = Hearts, value = Six},Card {suit = Hearts, value = Seven},Card {suit = Hearts, value = Eight}]}
+  Player {_nameP = "Nipun", _idP = "1", _cardsP = [Card {suit = Spades, value = Two},Card {suit = Spades, value = Three},Card {suit = Spades, value = Five},Card {suit = Spades, value = Six}]},
+  Player {_nameP = "Anish", _idP = "2", _cardsP = [Card {suit = Spades, value = Seven},Card {suit = Spades, value = Eight},Card {suit = Spades, value = Nine},Card {suit = Spades, value = Ten},Card {suit = Spades, value = Jack}]},
+  Player {_nameP = "Mahesh", _idP = "3", _cardsP = [Card {suit = Spades, value = Queen},Card {suit = Spades, value = King},Card {suit = Spades, value = Ace},Card {suit = Hearts, value = Two},Card {suit = Hearts, value = Three}]},
+  Player {_nameP = "Suresh", _idP = "4", _cardsP = [Card {suit = Hearts, value = Four},Card {suit = Hearts, value = Five},Card {suit = Hearts, value = Six},Card {suit = Hearts, value = Seven},Card {suit = Hearts, value = Eight}]}
   ]
 
 newGs :: Gamestate
@@ -117,7 +115,7 @@ testCheckHandleWin :: Score -> TestTree
 testCheckHandleWin sc = testGroup "Check and Handle Win"
             [
               scoreTest sc (\_ -> checkHandleWin initialGameState, (), initialGameState, 1, "Nobody won"),
-              scoreTest sc (\_ -> points $ fst $ teams $ checkHandleWin st, (), 1 , 1,"Team1 Won")
+              scoreTest sc (\_ -> _pointsT $ fst $ teams $ checkHandleWin st, (), 1 , 1,"Team1 Won")
             ]
           where 
             st = execState (do {
