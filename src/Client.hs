@@ -23,18 +23,6 @@ import Objects
 import Lens.Micro
 
 
-getValSuit :: PlayerState -> [Suit]
-getValSuit ps = case ps^.curRndCardsPS of
-                 [] -> [Spades .. Diamonds]
-                 (c:_) -> [suit c]
-
-checkNoCardPossibleClient :: PlayerState -> Bool
-checkNoCardPossibleClient ps = any (\st -> suit st `elem` getValSuit ps ) (ps^.playerPS.cardsP)
-
-isValidCardPs :: Card -> PlayerState -> Bool
-isValidCardPs crd ps = crd `elem` (ps^.playerPS.cardsP) && (not (checkNoCardPossibleClient ps) || elem (suit crd) (getValSuit ps))
-
---------------------------------------------------------------------------------
 application :: String -> WS.ClientApp ()
 application name conn = do
     putStrLn "Connected!"

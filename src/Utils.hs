@@ -7,15 +7,19 @@ module Utils
     , getCardNumber
     , getSuitUnicode
     , getSuitColor
-    ) 
+    , isValidIP
+    , isValidCardPs
+    )
 where
 import Data.CaseInsensitive (original)
-import qualified Data.ByteString.Char8 as BLU 
+import qualified Data.ByteString.Char8 as BLU
 import qualified Data.Maybe
 import qualified Network.WebSockets as WS
 import Objects
-import Data.Text (Text, unpack)
+import Data.Text (Text, unpack, splitOn, pack)
 import Text.Read (readEither)
+import Text.Read (readMaybe)
+import Lens.Micro
 
 data Message = Message { player :: String, move :: Card } deriving (Show, Read)
 
@@ -30,13 +34,13 @@ parseHeaders = map (\(key, val) -> (BLU.unpack (original key), BLU.unpack val))
 -- | Get the code from the parsed headers
 getNameFromHeaders :: [(String, String)] -> String
 -- fromMaybe returns the default value if the maybe value is Nothing
-getNameFromHeaders headers = Data.Maybe.fromMaybe "" (lookup "name" headers) 
+getNameFromHeaders headers = Data.Maybe.fromMaybe "" (lookup "name" headers)
 
 ---------------------------------------------------------------------------------------------------
 -- Parse message functions
 ---------------------------------------------------------------------------------------------------
 
-parseMessage :: Text -> Either String Message 
+parseMessage :: Text -> Either String Message
 parseMessage msg = case readEither $ unpack msg :: Either String Message of
     Left  _       -> Left "Invalid message format"
     Right message -> Right message
@@ -80,3 +84,29 @@ getSuitColor s = case s of
     Hearts   -> "red"
     Diamonds -> "red"
     _        -> "black"
+
+getValSuit :: [Card] -> [Suit]
+getValSuit crds = case crds of
+                 [] -> [Spades .. Diamonds]
+                 (c:_) -> [suit c]
+
+checkNoCardPossibleClient :: [Card] -> Bool
+checkNoCardPossibleClient crds = any (\st -> suit st `elem` getValSuit crds) crds
+
+isValidCardPs :: [Card] -> Card  -> Bool
+isValidCardPs crds crd  = crd `elem` crds && (not (checkNoCardPossibleClient crds) || elem (suit crd) (getValSuit crds))
+
+---------------------------------------------------------------------------------------------------
+-- Input validation helper methods
+---------------------------------------------------------------------------------------------------
+isValidIP :: Text -> Bool
+isValidIP ipText =
+    (unpack ipText == "localhost") || (let octets = map unpack (splitOn (pack ".") ipText)
+                                       in
+                                       length octets == 4 && all isIntOctet octets)
+                                            where 
+                                                isIntOctet octet = case readMaybe octet :: Maybe Int of
+                                                    Just n | n >= 0 && n <= 255 -> True
+                                                    _ -> False
+
+                    
