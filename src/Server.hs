@@ -3,12 +3,12 @@
 module Server where
 import Control.Monad (forM_, forever, when)
 import Control.Exception (finally)
-import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_)
+import Control.Concurrent (newMVar, MVar, readMVar, modifyMVar_, forkIO)
 import Data.ByteString.Char8 as BLU hiding (tail, head, splitAt, map, length, null, filter, putStrLn, any, empty)
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
 import Game (
-    shuffle, 
+    shuffle,
     cardAssign,
     getDefaultEmptyGamestate,
     initializeGameState,
@@ -22,21 +22,27 @@ import Objects
 import Utils (parseHeaders, getNameFromHeaders, parseMessage, Message (Message))
 import Constants (host, port)
 import Lens.Micro
-
-type Client = (String, WS.Connection)
-data ServerState = ServerState { clients :: [Client], gameState :: Gamestate, isStarted :: Bool}
+import Brick.BChan
+import UI.Server.ServerPage (serverUI)
 
 newServer :: ServerState
 newServer = ServerState { clients = [], gameState = getDefaultEmptyGamestate, isStarted = False}
 
 runServer :: IO ()
 runServer = do
-    putStrLn "Server running..."
+    -- putStrLn "Server running..."
     state <- newMVar newServer
+    putStrLn "Server running..."
     WS.runServer host port $ application state
 
-application :: MVar ServerState -> WS.ServerApp
+application :: MVar ServerState ->  WS.ServerApp
 application state pending = do
+    stateBChan <- newBChan 1
+    
+    _ <- forkIO $ do
+        putStrLn "UI Called"
+        serverUI stateBChan
+
     let request = WS.pendingRequest pending
     let headers = parseHeaders (WS.requestHeaders request)
     let playerName = getNameFromHeaders headers
@@ -45,8 +51,8 @@ application state pending = do
     else if isStarted s then
             if length (clients s) == 4 || not (checkStateExist s playerName)
                 then WS.rejectRequest pending (BLU.pack "Game has already started with all 4 clients")
-            else checkAndAcceptConnection state playerName pending
-        else checkAndAcceptConnection state playerName pending
+            else checkAndAcceptConnection state stateBChan playerName pending
+        else checkAndAcceptConnection state stateBChan playerName pending
 
 
 checkSameName :: ServerState -> String -> Bool
@@ -55,35 +61,38 @@ checkSameName state playerName = any (\(nm,_) -> nm == playerName ) (clients sta
 checkStateExist :: ServerState -> String -> Bool
 checkStateExist state playerName = any (\pl -> pl^.nameP == playerName) (playerOrder $ gameState state)
 
-checkAndAcceptConnection :: MVar ServerState -> String -> WS.ServerApp
-checkAndAcceptConnection state playerName pending = if not $ null playerName
-                                                    then acceptConnection state pending playerName
+checkAndAcceptConnection :: MVar ServerState -> BChan ServerState -> String -> WS.ServerApp
+checkAndAcceptConnection state stateBChan playerName pending = if not $ null playerName
+                                                    then acceptConnection state stateBChan pending playerName
                                                     else WS.rejectRequest pending (BLU.pack "No name specified")
 
-acceptConnection :: MVar ServerState -> WS.PendingConnection -> String -> IO ()
-acceptConnection state pending playerName = do
+acceptConnection :: MVar ServerState -> BChan ServerState -> WS.PendingConnection -> String -> IO ()
+acceptConnection state stateBChan pending playerName = do
     conn <- WS.acceptRequest pending
     let client = (playerName, conn)
-    addClientToState client state
-    putStrLn $ "Client " ++ playerName ++ " connected"
+    addClientToState client state stateBChan
+    -- putStrLn $ "Client " ++ playerName ++ " connected"
     shouldStartGame <- checkIfAllClientsReady state
     when shouldStartGame $ do
-        putStrLn "Starting game"
+        -- putStrLn "Starting game"
         initGame state
-        readMVar state >>= (\s -> putStrLn "Turn: " >> print (show (turn $ gameState s)))
+        -- readMVar state >>= (\s -> putStrLn "Turn: " >> print (show (turn $ gameState s)))
+        _ <- readMVar state
         broadcastMessage state
     WS.withPingThread conn 30 (return ()) $ do
         finally (talk client state) (disconnect client)
         where
             disconnect client = do
-                putStrLn ("Client Disconnected: " ++ fst client)
+                -- putStrLn ("Client Disconnected: " ++ fst client)
                 modifyMVar_ state $ \s -> do
-                    return (removeClient client s)
+                    let updatedServerState = removeClient client s
+                    writeBChan stateBChan updatedServerState
+                    return updatedServerState
 
 talk :: Client -> MVar ServerState -> IO ()
 talk (_, conn) state = forever $ do
     msg <- WS.receiveData conn
-    putStrLn $ "Received message: " ++ show msg
+    -- putStrLn $ "Received message: " ++ show msg
     s <- readMVar state
     if isFinished (gameState s)
         then WS.sendTextData conn (T.pack "Game is finished")
@@ -93,7 +102,8 @@ talk (_, conn) state = forever $ do
             Left err -> WS.sendTextData conn (T.pack err)
             Right message -> do
                 wasValidMove <- performMove message state
-                readMVar state >>= (\st -> putStrLn "Next Turn: " >> print ((turn $ gameState st)^.nameP)) -- only for debugging, remove later
+                -- readMVar state >>= (\st -> putStrLn "Next Turn: " >> print ((turn $ gameState st)^.nameP)) -- only for debugging, remove later
+                _ <- readMVar state
                 if wasValidMove
                     then return ()
                     else WS.sendTextData conn (T.pack "Invalid move")
@@ -109,10 +119,11 @@ broadcastMessage state = do
 -- Helper Functions for modifying ServerState
 -- ----------------------------------------------------------------------------------------------
 
-addClientToState :: Client ->  MVar ServerState -> IO ()
-addClientToState client state = do
+addClientToState :: Client ->  MVar ServerState -> BChan ServerState -> IO ()
+addClientToState client state stateBChan = do
     modifyMVar_ state $ \s -> do
         let clientList = addNewClient client s
+        writeBChan stateBChan clientList
         return clientList
 
 initGame :: MVar ServerState -> IO ()
@@ -168,7 +179,7 @@ performMove (Message player card) state = do
     if player == ((turn gs)^.nameP)
         then do
             let (isValid, newGs) = choseCardGs card gs
-            putStrLn $ "chose card is valid: " ++ show isValid
+            -- putStrLn $ "chose card is valid: " ++ show isValid
             if isValid
                 then do
                     let upGs = cardAssign $ checkHandleWin newGs

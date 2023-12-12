@@ -29,13 +29,15 @@ module Objects (
     teamsPS,
     trumpPS,
     isTurnPS,
-    curPlrNamePS 
+    curPlrNamePS,
+    Client,
+    ServerState (..)
 ) where
 
 
 import qualified Data.Text as T
 import Lens.Micro.TH
-
+import Network.WebSockets (Connection)
 data Suit = Spades | Hearts | Clubs | Diamonds deriving (Eq,Enum, Show, Read)
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace deriving (Ord,Eq,Enum,Read, Show)
@@ -53,6 +55,8 @@ data Gamestate = Gamestate {remainingCards :: [Card], round::Int, playerOrder::[
 data PlayerState = PlayerState {_playerPS::Player, _curRndCardsPS :: [Card], _roundNumPS::Int, _teamsPS::(Team,Team), _trumpPS:: Suit, _isTurnPS :: Bool, _curPlrNamePS :: String} deriving (Show,Read)
 makeLenses ''PlayerState
 
+type Client = (String, Connection)
+data ServerState = ServerState { clients :: [Client], gameState :: Gamestate, isStarted :: Bool}
 
 data Choice = HostMode | ClientMode
             deriving Show

@@ -186,7 +186,7 @@ renderUI playerStateUI = if isOver then renderWinUI winner else renderGameUI pla
         fn  _                        = (False,-1) -- Ongoing game
 
 appEvent :: BrickEvent () PlayerState -> EventM () PlayerStateUI ()
-appEvent (AppEvent newPlayerState)         = curPlayerState .= newPlayerState
+appEvent (AppEvent newPlayerState)          = curPlayerState .= newPlayerState >> updateIdx (+)
 appEvent (BT.VtyEvent(V.EvKey V.KEsc   [])) = liftIO exitFailure
 appEvent (BT.VtyEvent(V.EvKey V.KLeft  [])) = updateIdx (-)
 appEvent (BT.VtyEvent(V.EvKey V.KRight [])) = updateIdx (+)
@@ -208,10 +208,11 @@ updateIdx op = do
     let cps = currentPlayerStateUI^.curPlayerState
     let isTurn = cps^.isTurnPS
     let cards = cps^.playerPS.cardsP
+    let rndCards = cps^.curRndCardsPS
     let numCards = length cards
     let newIdx = if isTurn then (currentIdx `op` 1) `mod` numCards else currentIdx
     idx .= newIdx
-    if isValidCardPs cards (cards !! newIdx) then 
+    if isValidCardPs cards newIdx rndCards  then 
         return () 
     else 
         updateIdx op 

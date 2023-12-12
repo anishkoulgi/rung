@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 module Utils
     ( parseHeaders
     , Message(..)
@@ -90,11 +92,12 @@ getValSuit crds = case crds of
                  [] -> [Spades .. Diamonds]
                  (c:_) -> [suit c]
 
-checkNoCardPossibleClient :: [Card] -> Bool
-checkNoCardPossibleClient crds = any (\st -> suit st `elem` getValSuit crds) crds
+checkNoCardPossibleClient :: [Card] -> [Card] -> Bool
+checkNoCardPossibleClient plrCards rndCards = any (\card -> (suit card) `elem` (getValSuit rndCards)) plrCards
 
-isValidCardPs :: [Card] -> Card  -> Bool
-isValidCardPs crds crd  = crd `elem` crds && (not (checkNoCardPossibleClient crds) || elem (suit crd) (getValSuit crds))
+isValidCardPs :: [Card] -> Int -> [Card]  -> Bool
+isValidCardPs plrCards idx  rndCards  = (not (checkNoCardPossibleClient plrCards rndCards) || suit crd `elem` (getValSuit rndCards))
+    where crd = plrCards !! idx
 
 ---------------------------------------------------------------------------------------------------
 -- Input validation helper methods
@@ -104,9 +107,8 @@ isValidIP ipText =
     (unpack ipText == "localhost") || (let octets = map unpack (splitOn (pack ".") ipText)
                                        in
                                        length octets == 4 && all isIntOctet octets)
-                                            where 
+                                            where
                                                 isIntOctet octet = case readMaybe octet :: Maybe Int of
                                                     Just n | n >= 0 && n <= 255 -> True
                                                     _ -> False
 
-                    

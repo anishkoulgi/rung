@@ -33,6 +33,7 @@ library
       UI.Client.ClientPage
       UI.Client.InitialClientPage
       UI.GameMode
+      UI.Server.ServerPage
       Utils
   other-modules:
       Paths_court_piece
