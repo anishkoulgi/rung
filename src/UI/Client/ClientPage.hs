@@ -40,6 +40,7 @@ import  Brick.Widgets.Core
 import Brick.Types as BT
 import Brick.Util (on, fg)
 import Control.Monad.IO.Class
+import Control.Monad
 import Control.Concurrent (MVar, putMVar)
 import qualified Graphics.Vty as V
 
@@ -185,8 +186,18 @@ renderUI playerStateUI = if isOver then renderWinUI winner else renderGameUI pla
         fn (         _ , Team _ 7 _) = (True,2)   -- Team 2 has 7 points
         fn  _                        = (False,-1) -- Ongoing game
 
+
+betw :: Ord a => a -> a -> a -> a
+betw a x b
+    | x > b =  b
+    | x < a =  a
+    | otherwise = x
+
 appEvent :: BrickEvent () PlayerState -> EventM () PlayerStateUI ()
-appEvent (AppEvent newPlayerState)         = curPlayerState .= newPlayerState
+appEvent (AppEvent newPlayerState)         = do
+                                    psui <- get
+                                    curPlayerState .= newPlayerState
+                                    idx .= betw 0 (psui^.idx) (length (newPlayerState^.playerPS.cardsP))
 appEvent (BT.VtyEvent(V.EvKey V.KEsc   [])) = liftIO exitFailure
 appEvent (BT.VtyEvent(V.EvKey V.KLeft  [])) = updateIdx (-)
 appEvent (BT.VtyEvent(V.EvKey V.KRight [])) = updateIdx (+)
@@ -195,10 +206,13 @@ appEvent (BT.VtyEvent(V.EvKey V.KEnter [])) = selectCard
         selectCard :: EventM () PlayerStateUI ()
         selectCard = do
             currentPlayerStateUI <- get
-            let playerCards = currentPlayerStateUI^.curPlayerState.playerPS.cardsP
+            let cps = currentPlayerStateUI^.curPlayerState
+            let playerCards = cps^.playerPS.cardsP
+            let isTurn = cps^.isTurnPS
             let numCards = length playerCards
-            _ <- liftIO $ putMVar (currentPlayerStateUI^.clientMVar) (playerCards !! ((currentPlayerStateUI^.idx) `mod` numCards))
-            return ()
+            when isTurn $ do
+                _ <- liftIO $ putMVar (currentPlayerStateUI^.clientMVar) (playerCards !! ((currentPlayerStateUI^.idx) `mod` numCards))
+                return ()
 appEvent _ = return ()
 
 updateIdx :: (Int -> Int -> Int) -> EventM () PlayerStateUI ()
@@ -206,15 +220,16 @@ updateIdx op = do
     currentPlayerStateUI <- get
     let currentIdx = currentPlayerStateUI^.idx
     let cps = currentPlayerStateUI^.curPlayerState
+    let rndCards = cps^.curRndCardsPS
     let isTurn = cps^.isTurnPS
     let cards = cps^.playerPS.cardsP
     let numCards = length cards
     let newIdx = if isTurn then (currentIdx `op` 1) `mod` numCards else currentIdx
-    idx .= newIdx
-    if isValidCardPs cards (cards !! newIdx) then 
-        return () 
-    else 
-        updateIdx op 
+    when isTurn $ do
+        idx .= newIdx
+        if isValidCardPs cards newIdx rndCards
+            then  return ()
+            else updateIdx op
 
 theMap :: AttrMap
 theMap = attrMap globalDefault

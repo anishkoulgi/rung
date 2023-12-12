@@ -49,6 +49,7 @@ library
     , bytestring
     , case-insensitive
     , containers
+    , ip
     , microlens
     , microlens-mtl
     , microlens-th
@@ -83,6 +84,7 @@ executable court-piece-exe
     , case-insensitive
     , containers
     , court-piece
+    , ip
     , microlens
     , microlens-mtl
     , microlens-th
@@ -119,6 +121,7 @@ test-suite court-piece-test
     , case-insensitive
     , containers
     , court-piece
+    , ip
     , microlens
     , microlens-mtl
     , microlens-th
