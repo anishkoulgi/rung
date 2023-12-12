@@ -95,7 +95,7 @@ team2Won = C.hCenter $ padTopBottom 1 $ withAttr(attrName "brightRedOnBlack") $ 
 
 playerUI :: [Card] -> Int -> Widget n
 playerUI cards index = hBox [
-    hLimitPercent 40 $ B.border $ padAll 3 $ vBox [
+    hLimitPercent 90 $ B.border $ padAll 3 $ vBox [
         fill ' ',
         C.hCenter $ hBox $ mapWithIndex(\(currentIdx, card) -> renderCard card (currentIdx == index `mod` length cards))cards,
         fill ' '
@@ -119,7 +119,7 @@ teamUI (team1, team2) = hBox [
 
 roundUI :: PlayerState -> Widget n
 roundUI playerState = hBox [
-    hLimitPercent 35 $ B.border $ padAll 3 $ vBox [
+    hLimitPercent 40 $ B.border $ padAll 3 $ vBox [
         fill ' ',
         C.hCenter $ str rnd,
         fill ' ',
