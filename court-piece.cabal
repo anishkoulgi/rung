@@ -42,7 +42,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , brick ==1.9
     , bytestring
@@ -55,6 +56,9 @@ library
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , vty
@@ -71,7 +75,8 @@ executable court-piece-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , brick ==1.9
     , bytestring
@@ -85,6 +90,9 @@ executable court-piece-exe
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , vty
@@ -95,14 +103,16 @@ test-suite court-piece-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Common
       Paths_court_piece
   autogen-modules:
       Paths_court_piece
   hs-source-dirs:
       test
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
   build-depends:
-      array
+      QuickCheck
+    , array
     , base >=4.7 && <5
     , brick ==1.9
     , bytestring
@@ -116,6 +126,9 @@ test-suite court-piece-test
     , network
     , random
     , split
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
     , text
     , utf8-string
     , vty

@@ -73,21 +73,8 @@ assignCardPl numCards currentState@(remCards,p:ps)
             finalRemCards = if flg then updatedRemCards else remCards
             finalPlayers = if flg then newp:plyrs else p:ps
 
-
-
 initialDeck :: [Card]
 initialDeck = [Card st val | st <- [Spades .. Diamonds],val <- [Two .. Ace]]
-nipun :: Player
-nipun = Player "Nipun" "1" []
-anish :: Player
-anish = Player "Anish" "2" []
-mahesh :: Player
-mahesh = Player "Mahesh" "3" []
-suresh :: Player
-suresh = Player "Suresh" "4" []
-
-allPlayers :: [Player]
-allPlayers = [nipun,anish,mahesh,suresh]
 
 -- PlayerState to send to the client of player for displaying on UI
 getPlayerState :: Gamestate -> Player -> PlayerState
@@ -162,10 +149,6 @@ reorderPL winPl pls = winPl : (b ++ a) where
                 [x,y] -> (x,y)
                 _ -> ([],[])
 
--- >>> reorderPL nipun [mahesh,anish,nipun,suresh]
--- [Player {_nameP = "Nipun", cards = []},Player {_nameP = "Suresh", cards = []},Player {_nameP = "Mahesh", cards = []},Player {_nameP = "Anish", cards = []}]
-
-
 -- See if the current game is complete and update the gamestate based on that
 checkHandleWin :: Gamestate -> Gamestate
 checkHandleWin (Gamestate remC rnd pOrder cr@[_,_,_,_] tm trmp) = ns where
@@ -213,3 +196,4 @@ runGame gs = let vals = cardAssign gs in do {
     chosenCard <- getLine;
     runGame $ checkHandleWin $ snd $ choseCardGs (read chosenCard) vals;
 }
+
