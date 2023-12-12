@@ -10,7 +10,7 @@ import           Control.Monad       (forever)
 import           Network.Socket      (withSocketsDo)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
+import Data.ByteString.Char8 as BLU hiding (any, elem, getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
 import Brick.BChan
@@ -22,6 +22,17 @@ import UI.Client.ClientPage(showClientUI)
 import Objects
 import Lens.Micro
 
+
+getValSuit :: PlayerState -> [Suit]
+getValSuit ps = case ps^.curRndCardsPS of
+                 [] -> [Spades .. Diamonds]
+                 (c:_) -> [suit c]
+
+checkNoCardPossibleClient :: PlayerState -> Bool
+checkNoCardPossibleClient ps = any (\st -> suit st `elem` getValSuit ps ) (ps^.playerPS.cardsP)
+
+isValidCardPs :: Card -> PlayerState -> Bool
+isValidCardPs crd ps = crd `elem` (ps^.playerPS.cardsP) && (not (checkNoCardPossibleClient ps) || elem (suit crd) (getValSuit ps))
 
 --------------------------------------------------------------------------------
 application :: String -> WS.ClientApp ()
