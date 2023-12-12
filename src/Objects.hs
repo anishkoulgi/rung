@@ -54,7 +54,7 @@ data PlayerState = PlayerState {_playerPS::Player, _curRndCardsPS :: [Card], _ro
 makeLenses ''PlayerState
 
 
-data Choice = HostMode | ClientMode
+data Choice = HostMode | ClientMode | RuleMode
             deriving Show
 
 data ClientInfo = 

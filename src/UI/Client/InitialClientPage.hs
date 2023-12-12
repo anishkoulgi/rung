@@ -19,15 +19,21 @@ import Brick.Forms
   , focusedFormInputAttr
   , invalidFormInputAttr
   , editTextField
+  , setFieldValid
+  , allFieldsValid
   , (@@=)
   )
 import Brick.Focus
   ( focusRingCursor
+  , focusGetCurrent
   )
-import Control.Monad.IO.Class  
+import Control.Monad.IO.Class
 import qualified Graphics.Vty as V
 import Objects
+import Constants (logoStr)
 import System.Exit (exitFailure)
+import Lens.Micro
+import Utils (isValidIP)
 
 
 data Name = NameField
@@ -45,12 +51,7 @@ mkForm = let label s w = padBottom (Pad 1) $
 
 
 logo :: Widget Name
-logo = str $ unlines ["░█████╗░░█████╗░██╗░░░██╗██████╗░████████╗  ██████╗░██╗███████╗░█████╗░███████╗",
-                      "██╔══██╗██╔══██╗██║░░░██║██╔══██╗╚══██╔══╝  ██╔══██╗██║██╔════╝██╔══██╗██╔════╝",
-                      "██║░░╚═╝██║░░██║██║░░░██║██████╔╝░░░██║░░░  ██████╔╝██║█████╗░░██║░░╚═╝█████╗░░",
-                      "██║░░██╗██║░░██║██║░░░██║██╔══██╗░░░██║░░░  ██╔═══╝░██║██╔══╝░░██║░░██╗██╔══╝░░",
-                      "╚█████╔╝╚█████╔╝╚██████╔╝██║░░██║░░░██║░░░  ██║░░░░░██║███████╗╚█████╔╝███████╗",
-                      "░╚════╝░░╚════╝░░╚═════╝░╚═╝░░╚═╝░░░╚═╝░░░  ╚═╝░░░░░╚═╝╚══════╝░╚════╝░╚══════╝"]
+logo = C.hCenter $ padTop (Pad 3) $ str $ unlines logoStr
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr
@@ -63,7 +64,7 @@ theMap = attrMap V.defAttr
 
 
 renderMyForm :: Form ClientInfo e Name -> [Widget Name]
-renderMyForm form = [(C.hCenter $ padTop (Pad 3) $ logo) <=> (C.hCenter $ C.vCenter $ B.border $ padAll 1 $ hLimit 50 $ renderForm form)]
+renderMyForm form = [ logo <=> (C.hCenter $ C.vCenter $ B.border $ padAll 1 $ hLimit 50 $ renderForm form)]
 
 formApp :: App (Form ClientInfo e Name) e Name
 formApp =
@@ -74,35 +75,33 @@ formApp =
                 VtyEvent (V.EvResize {}) -> return ()
                 VtyEvent ( V.EvKey  V.KEsc       _) -> liftIO exitFailure
                 VtyEvent ( V.EvKey (V.KChar 'q') _) -> liftIO exitFailure
-                -- Enter quits only when we aren't in the multi-line editor.
-                VtyEvent (V.EvKey V.KEnter []) -> halt
+                VtyEvent (V.EvKey V.KEnter []) 
+                  | focusGetCurrent f == Just IPAddressField -> halt
+                  | otherwise -> return ()
                 _ -> do
                     handleFormEvent ev
 
-                    -- Example of external validation:
-                    -- Require age field to contain a value that is at least 18.
-                    -- st <- gets formState
-                    -- modify $ setFieldValid (st^.age >= 18) AgeField
+                    st <- gets formState
+                    modify $ setFieldValid (isValidIP (st^.ipC)) IPAddressField
 
         , appChooseCursor = focusRingCursor formFocus
         , appStartEvent = return ()
         , appAttrMap = const theMap
         }
 
-getClientData :: IO (ClientInfo)
+getClientData :: IO ClientInfo
 getClientData = do
     let buildVty = do
           v <- V.mkVty V.defaultConfig
           V.setMode (V.outputIface v) V.Mouse True
           return v
 
-        initialUserInfo = ClientInfo { _nameC = ""
-                                   , _ipC = ""
-                                   }
-        f = mkForm initialUserInfo
+        initialUserInfo = ClientInfo { _nameC = "", _ipC = ""}
+        initialForm = setFieldValid False IPAddressField $ mkForm  initialUserInfo
     initialVty <- buildVty
-    f' <- customMain initialVty buildVty Nothing formApp f
+    finalForm <- customMain initialVty buildVty Nothing formApp initialForm
+    if allFieldsValid finalForm then return (formState finalForm) else getClientData
 
-    return (formState f')
+
 
 

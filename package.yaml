@@ -43,6 +43,7 @@ dependencies:
 - tasty-hunit
 - tasty-quickcheck
 - QuickCheck
+- ip
 
 ghc-options:
 - -Wall

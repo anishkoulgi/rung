@@ -10,7 +10,7 @@ import           Control.Monad       (forever)
 import           Network.Socket      (withSocketsDo)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import Data.ByteString.Char8 as BLU hiding (getLine, putStrLn)
+import Data.ByteString.Char8 as BLU hiding (any, elem, getLine, putStrLn)
 import qualified Network.WebSockets  as WS
 import Network.WebSockets (Headers)
 import Brick.BChan
@@ -23,7 +23,6 @@ import Objects
 import Lens.Micro
 
 
---------------------------------------------------------------------------------
 application :: String -> WS.ClientApp ()
 application name conn = do
     putStrLn "Connected!"
