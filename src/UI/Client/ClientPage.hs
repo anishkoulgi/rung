@@ -199,6 +199,7 @@ appEvent (AppEvent newPlayerState)         = do
                                     curPlayerState .= newPlayerState
                                     idx .= betw 0 (psui^.idx) (length (newPlayerState^.playerPS.cardsP))
 appEvent (BT.VtyEvent(V.EvKey V.KEsc   [])) = liftIO exitFailure
+appEvent (BT.VtyEvent(V.EvKey (V.KChar 'q') [])) = liftIO exitFailure
 appEvent (BT.VtyEvent(V.EvKey V.KLeft  [])) = updateIdx (-)
 appEvent (BT.VtyEvent(V.EvKey V.KRight [])) = updateIdx (+)
 appEvent (BT.VtyEvent(V.EvKey V.KEnter [])) = selectCard

@@ -19,7 +19,7 @@ import System.Exit (exitFailure)
 
 import qualified Objects as O
 
-data Name = Host | Client
+data Name = Host | Client | Rules
     deriving (Show, Eq, Ord)
 
 drawUI :: D.Dialog O.Choice Name -> [Widget Name]
@@ -39,6 +39,7 @@ initialState = D.dialog (Just $ str "Court Piece") (Just (Host, choices)) 50
     where
         choices = [ ("Host a game",   Host,   O.HostMode)
                   , ("Join a game",  Client,  O.ClientMode)
+                  , ("Rules", Rules, O.RuleMode)
                   ]
 
 theMap :: A.AttrMap
@@ -62,5 +63,6 @@ selectionMain = do
     d <- M.defaultMain modeSelectionApp initialState
     return (case D.dialogSelection d of
         Just (Client, O.ClientMode) -> O.ClientMode
-        Just (_, _) -> O.HostMode
+        Just (Host, O.HostMode)     -> O.HostMode
+        Just _                      -> O.RuleMode 
         Nothing -> O.ClientMode)
