@@ -86,7 +86,7 @@ team1Won = C.hCenter $ C.vCenter $ padTopBottom 1 $ withAttr (attrName "cyanOnBl
                         "       ░░░░░     ░░░░░░   ░░░░░░░░ ░░░░░ ░░░ ░░░░░    ░░░░░         ░░░   ░░░       ░░░░░░  ░░░░ ░░░░░    ░░░ ░░░ ░░░" ]
 
 team2Won :: Widget n
-team2Won = C.hCenter $ padTopBottom 1 $ withAttr (attrName "brightRedOnBlack") $ str s
+team2Won = C.hCenter $ C.vCenter $ padTopBottom 1 $ withAttr (attrName "brightRedOnBlack") $ str s
     where s = unlines [ "███████████                                        ████████     █████   ███   █████                        ███ ███ ███",
                         "░█░░░███░░░█                                       ███░░░░███   ░░███   ░███  ░░███                        ░███░███░███",
                         "░   ░███  ░   ██████   ██████   █████████████     ░░░    ░███    ░███   ░███   ░███   ██████  ████████     ░███░███░███",
