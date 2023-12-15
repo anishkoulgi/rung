@@ -5,11 +5,19 @@
 # Goal
 We will be creating a multiplayer terminal UI based game in Haskell using the brick library. The game would have 2 modes: host and player mode. We would first start a host application containing all the game logic and state. Clients can then connect to the host using the player mode. After each move(event), the host will evaluate the game state and broadcast the player's state.
 
-- Create a host application having all the game logic(Back end).
-- Add networking to support multiplayer(Middleware/Connector).
-- Write client/player code for handling game UI(Front end).
-- Add unit testing for the game logic and client UI.
-- Bonus: Add fault-tolerance to the clients.
+- Create a host application having all the game logic(Back end). ✅
+- Add networking to support multiplayer(Middleware/Connector). ✅
+- Write client/player code for handling game UI(Front end). ✅
+- Add unit testing for the game logic. ✅
+- Bonus: Add fault-tolerance to the clients. ✅
+
+# Setup
+Ensure that Haskell and the stack toolchain is installed.
+```
+git clone https://github.com/anishkoulgi/rung.git
+cd rung
+stack run
+```
 
 # Architecture
 ## Server Side State Diagram
