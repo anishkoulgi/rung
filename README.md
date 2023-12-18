@@ -64,6 +64,10 @@ We are on track to complete the basic game functionality but we are unsure about
 - [lens](https://hackage.haskell.org/package/lens-tutorial-1.0.4/docs/Control-Lens-Tutorial.html)
 - [quickcheck](https://hackage.haskell.org/package/QuickCheck)
 
+# Acknowledgments
+- [Brick User guide](https://github.com/jtdaugherty/brick/blob/master/docs/guide.rst)
+- [Websockets reference](https://jaspervdj.be/websockets/reference/)
+
 # Team
 - Anish Koulgi
 - Nipun Wahi
