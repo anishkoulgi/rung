@@ -67,6 +67,7 @@ We are on track to complete the basic game functionality but we are unsure about
 # Acknowledgments
 - [Brick User guide](https://github.com/jtdaugherty/brick/blob/master/docs/guide.rst)
 - [Websockets reference](https://jaspervdj.be/websockets/reference/)
+- [Ascii Text Generator](https://textkool.com/en/ascii-art-generator) - For generating titles in large fonts
 
 # Team
 - Anish Koulgi
